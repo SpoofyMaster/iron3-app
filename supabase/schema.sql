@@ -19,6 +19,20 @@ create table public.profiles (
   is_premium boolean not null default false,
   premium_expires_at timestamptz,
   weekly_goal integer not null default 3,
+
+  -- Phase 2: expanded profile fields
+  athlete_type text check (athlete_type in ('first_timer', 'experienced')),
+  triathlon_level text check (triathlon_level in ('beginner', 'intermediate', 'advanced', 'pro')),
+  race_distance_goal text check (race_distance_goal in ('sprint', 'olympic', 'half_ironman', 'full_ironman', 'none')),
+  target_race_date date,
+  preferred_mode text check (preferred_mode in ('beginner_guided', 'performance_focused')),
+  swim_level text check (swim_level in ('beginner', 'comfortable', 'strong')),
+  bike_level text check (bike_level in ('beginner', 'comfortable', 'strong')),
+  run_level text check (run_level in ('beginner', 'comfortable', 'strong')),
+  weekly_availability text check (weekly_availability in ('2-3', '4-5', '6-7')),
+  primary_goal text check (primary_goal in ('finish_first_race', 'get_fitter', 'improve_time', 'become_consistent', 'train_seriously')),
+  age integer check (age > 0 and age < 120),
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -93,6 +107,44 @@ create policy "Users can update their own activities"
 
 create policy "Users can delete their own activities"
   on public.activities for delete using (auth.uid() = user_id);
+
+-- ============================================================
+-- WORKOUT LOGS (Phase 2: expanded workout tracking)
+-- ============================================================
+
+create table public.workout_logs (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  discipline text not null check (discipline in ('swim', 'bike', 'run', 'brick', 'strength')),
+  workout_type text not null,
+  duration integer not null check (duration > 0),  -- seconds
+  distance numeric,                                 -- optional, meters/km
+  effort integer not null check (effort >= 1 and effort <= 10),
+  indoor_outdoor text check (indoor_outdoor in ('indoor', 'outdoor')),
+  notes text default '',
+  points_earned integer not null default 0,
+  completed boolean not null default true,
+  date timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index idx_workout_logs_user on public.workout_logs(user_id);
+create index idx_workout_logs_date on public.workout_logs(user_id, date desc);
+create index idx_workout_logs_discipline on public.workout_logs(user_id, discipline);
+
+alter table public.workout_logs enable row level security;
+
+create policy "Users can view their own workout logs"
+  on public.workout_logs for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own workout logs"
+  on public.workout_logs for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own workout logs"
+  on public.workout_logs for update using (auth.uid() = user_id);
+
+create policy "Users can delete their own workout logs"
+  on public.workout_logs for delete using (auth.uid() = user_id);
 
 -- ============================================================
 -- RANK POINTS (materialized per discipline)
@@ -271,6 +323,112 @@ create policy "Users can view their subscriptions"
   on public.subscriptions for select using (auth.uid() = user_id);
 
 -- ============================================================
+-- RACE GOALS (Phase 2)
+-- ============================================================
+
+create table public.race_goals (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  race_type text not null check (race_type in ('sprint', 'olympic', 'half_ironman', 'full_ironman', 'none')),
+  race_name text not null default '',
+  race_date date,
+  goal_type text not null default 'finish'
+    check (goal_type in ('finish', 'time_goal', 'podium')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index idx_race_goals_user on public.race_goals(user_id);
+
+alter table public.race_goals enable row level security;
+
+create policy "Users can view their own race goals"
+  on public.race_goals for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own race goals"
+  on public.race_goals for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own race goals"
+  on public.race_goals for update using (auth.uid() = user_id);
+
+create policy "Users can delete their own race goals"
+  on public.race_goals for delete using (auth.uid() = user_id);
+
+-- ============================================================
+-- STREAKS (Phase 2)
+-- ============================================================
+
+create table public.streaks (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  current_streak integer not null default 0,
+  longest_streak integer not null default 0,
+  last_activity_date date,
+  updated_at timestamptz not null default now(),
+  unique(user_id)
+);
+
+create index idx_streaks_user on public.streaks(user_id);
+
+alter table public.streaks enable row level security;
+
+create policy "Users can view their own streaks"
+  on public.streaks for select using (auth.uid() = user_id);
+
+create policy "Users can manage their own streaks"
+  on public.streaks for all using (auth.uid() = user_id);
+
+-- ============================================================
+-- MILESTONES (Phase 2)
+-- ============================================================
+
+create table public.milestones (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null,
+  title text not null,
+  description text not null default '',
+  icon text not null default '',
+  achieved_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique(user_id, type)
+);
+
+create index idx_milestones_user on public.milestones(user_id);
+
+alter table public.milestones enable row level security;
+
+create policy "Users can view their own milestones"
+  on public.milestones for select using (auth.uid() = user_id);
+
+create policy "System can manage milestones"
+  on public.milestones for all using (auth.uid() = user_id);
+
+-- ============================================================
+-- NOTIFICATION PREFERENCES (Phase 2)
+-- ============================================================
+
+create table public.notification_preferences (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  reminders_enabled boolean not null default true,
+  reminder_time time not null default '08:00:00',
+  motivational_notifications boolean not null default true,
+  weekly_summary boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id)
+);
+
+alter table public.notification_preferences enable row level security;
+
+create policy "Users can view their own notification preferences"
+  on public.notification_preferences for select using (auth.uid() = user_id);
+
+create policy "Users can manage their own notification preferences"
+  on public.notification_preferences for all using (auth.uid() = user_id);
+
+-- ============================================================
 -- LEADERBOARD VIEW
 -- ============================================================
 
@@ -353,3 +511,46 @@ begin
     overall_points = excluded.overall_points;
 end;
 $$;
+
+-- Update streak on workout log insert
+create or replace function public.update_streak_on_workout()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  v_last_date date;
+  v_current integer;
+  v_longest integer;
+  v_today date := current_date;
+begin
+  select last_activity_date, current_streak, longest_streak
+  into v_last_date, v_current, v_longest
+  from public.streaks
+  where user_id = new.user_id;
+
+  if not found then
+    insert into public.streaks (user_id, current_streak, longest_streak, last_activity_date)
+    values (new.user_id, 1, 1, v_today);
+  elsif v_last_date = v_today then
+    -- already logged today, no change
+    null;
+  elsif v_last_date = v_today - 1 then
+    v_current := v_current + 1;
+    v_longest := greatest(v_longest, v_current);
+    update public.streaks
+    set current_streak = v_current, longest_streak = v_longest, last_activity_date = v_today, updated_at = now()
+    where user_id = new.user_id;
+  else
+    update public.streaks
+    set current_streak = 1, last_activity_date = v_today, updated_at = now()
+    where user_id = new.user_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger on_workout_logged
+  after insert on public.workout_logs
+  for each row execute function public.update_streak_on_workout();
