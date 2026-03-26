@@ -11,3 +11,6 @@ export { FilterChip } from "./FilterChip";
 export { MiniChart } from "./MiniChart";
 export { PersonalBestRow } from "./PersonalBestRow";
 export { PremiumBanner } from "./PremiumBanner";
+export { StreakBadge } from "./StreakBadge";
+export { MilestoneCard } from "./MilestoneCard";
+export { PremiumLock } from "./PremiumLock";

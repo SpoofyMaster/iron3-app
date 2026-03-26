@@ -12,6 +12,19 @@ import {
   OnboardingState,
   Discipline,
   ExperienceLevel,
+  WorkoutLog,
+  WorkoutDiscipline,
+  WorkoutType,
+  IndoorOutdoor,
+  Milestone,
+  RaceGoal,
+  WeeklyVolume,
+  TriathlonLevel,
+  RaceDistanceGoal,
+  DisciplineLevel,
+  WeeklyAvailability,
+  PrimaryGoal,
+  AppMode,
 } from "@/types";
 import { getTriRank } from "@/lib/ranks";
 import {
@@ -24,6 +37,10 @@ import {
   mockLeaderboard,
   mockRankHistory,
   mockWeeklyStats,
+  mockWorkoutLogs,
+  mockMilestones,
+  mockRaceGoal,
+  mockWeeklyVolumes,
 } from "@/lib/mockData";
 
 interface AppState {
@@ -43,10 +60,21 @@ interface AppState {
   rankHistory: RankHistoryEntry[];
   weeklyStats: WeeklyStats;
 
+  workoutLogs: WorkoutLog[];
+  milestones: Milestone[];
+  raceGoal: RaceGoal | null;
+  weeklyVolumes: WeeklyVolume[];
+
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string;
+
   onboarding: OnboardingState;
   hasCompletedOnboarding: boolean;
 
   isLoading: boolean;
+  showWorkoutConfirmation: boolean;
+  lastLoggedPoints: number;
 
   getTriRank: () => ReturnType<typeof getTriRank>;
   getActivitiesForDiscipline: (discipline: Discipline) => Activity[];
@@ -61,10 +89,26 @@ interface AppState {
   setExperienceLevel: (level: ExperienceLevel) => void;
   setOnboardingDisciplines: (disciplines: Discipline[]) => void;
   setWeeklyGoal: (goal: number) => void;
+  setOnboardingName: (name: string) => void;
+  setOnboardingAge: (age: number | null) => void;
+  setTriathlonLevel: (level: TriathlonLevel) => void;
+  setRaceDistanceGoal: (goal: RaceDistanceGoal) => void;
+  setTargetRaceDate: (date: string | null) => void;
+  setSwimLevel: (level: DisciplineLevel) => void;
+  setBikeLevel: (level: DisciplineLevel) => void;
+  setRunLevel: (level: DisciplineLevel) => void;
+  setWeeklyAvailability: (avail: WeeklyAvailability) => void;
+  setPrimaryGoal: (goal: PrimaryGoal) => void;
+  setPreferredMode: (mode: AppMode) => void;
   completeOnboarding: () => void;
+
+  logWorkout: (workout: Omit<WorkoutLog, "id" | "userId" | "createdAt" | "pointsEarned">) => void;
+  dismissWorkoutConfirmation: () => void;
 
   togglePremium: () => void;
 }
+
+let workoutCounter = 100;
 
 export const useAppStore = create<AppState>((set, get) => ({
   user: mockUser,
@@ -83,15 +127,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   rankHistory: mockRankHistory,
   weeklyStats: mockWeeklyStats,
 
+  workoutLogs: mockWorkoutLogs,
+  milestones: mockMilestones,
+  raceGoal: mockRaceGoal,
+  weeklyVolumes: mockWeeklyVolumes,
+
+  currentStreak: 7,
+  longestStreak: 34,
+  lastActivityDate: "2026-03-26",
+
   onboarding: {
     step: 0,
     experienceLevel: null,
     disciplines: [],
     weeklyGoal: 3,
+    name: "",
+    age: null,
+    triathlonLevel: null,
+    raceDistanceGoal: null,
+    targetRaceDate: null,
+    swimLevel: null,
+    bikeLevel: null,
+    runLevel: null,
+    weeklyAvailability: null,
+    primaryGoal: null,
+    preferredMode: null,
   },
   hasCompletedOnboarding: true,
 
   isLoading: false,
+  showWorkoutConfirmation: false,
+  lastLoggedPoints: 0,
 
   getTriRank: () => {
     const { swimPoints, bikePoints, runPoints } = get();
@@ -136,7 +202,109 @@ export const useAppStore = create<AppState>((set, get) => ({
       onboarding: { ...state.onboarding, weeklyGoal: goal },
     })),
 
+  setOnboardingName: (name) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, name },
+    })),
+
+  setOnboardingAge: (age) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, age },
+    })),
+
+  setTriathlonLevel: (level) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, triathlonLevel: level },
+    })),
+
+  setRaceDistanceGoal: (goal) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, raceDistanceGoal: goal },
+    })),
+
+  setTargetRaceDate: (date) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, targetRaceDate: date },
+    })),
+
+  setSwimLevel: (level) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, swimLevel: level },
+    })),
+
+  setBikeLevel: (level) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, bikeLevel: level },
+    })),
+
+  setRunLevel: (level) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, runLevel: level },
+    })),
+
+  setWeeklyAvailability: (avail) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, weeklyAvailability: avail },
+    })),
+
+  setPrimaryGoal: (goal) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, primaryGoal: goal },
+    })),
+
+  setPreferredMode: (mode) =>
+    set((state) => ({
+      onboarding: { ...state.onboarding, preferredMode: mode },
+    })),
+
   completeOnboarding: () => set({ hasCompletedOnboarding: true }),
+
+  logWorkout: (workout) => {
+    workoutCounter++;
+    const id = `wl-${workoutCounter}`;
+    const durationMin = workout.duration / 60;
+    let points = Math.floor(durationMin * 3);
+    if (workout.effort >= 7) points += 20;
+    if (workout.effort >= 9) points += 30;
+    if (durationMin >= 60) points += 15;
+    if (durationMin >= 90) points += 30;
+
+    const newLog: WorkoutLog = {
+      ...workout,
+      id,
+      userId: "user-001",
+      createdAt: new Date().toISOString(),
+      pointsEarned: points,
+    };
+
+    const state = get();
+
+    let newSwim = state.swimPoints;
+    let newBike = state.bikePoints;
+    let newRun = state.runPoints;
+    if (workout.discipline === "swim") newSwim += points;
+    else if (workout.discipline === "bike") newBike += points;
+    else if (workout.discipline === "run") newRun += points;
+
+    set({
+      workoutLogs: [newLog, ...state.workoutLogs],
+      swimPoints: newSwim,
+      bikePoints: newBike,
+      runPoints: newRun,
+      currentStreak: state.currentStreak + 1,
+      lastActivityDate: new Date().toISOString().split("T")[0],
+      weeklyStats: {
+        ...state.weeklyStats,
+        totalActivities: state.weeklyStats.totalActivities + 1,
+        totalPoints: state.weeklyStats.totalPoints + points,
+      },
+      showWorkoutConfirmation: true,
+      lastLoggedPoints: points,
+    });
+  },
+
+  dismissWorkoutConfirmation: () =>
+    set({ showWorkoutConfirmation: false }),
 
   togglePremium: () =>
     set((state) => ({

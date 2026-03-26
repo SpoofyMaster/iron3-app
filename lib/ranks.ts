@@ -6,8 +6,10 @@ export const RANK_THRESHOLDS: RankThreshold[] = [
   { tier: "Bronze", min: 1000, max: 2499, color: colors.rank.Bronze },
   { tier: "Silver", min: 2500, max: 4999, color: colors.rank.Silver },
   { tier: "Gold", min: 5000, max: 9999, color: colors.rank.Gold },
-  { tier: "Elite", min: 10000, max: 19999, color: colors.rank.Elite },
-  { tier: "Legendary", min: 20000, max: Infinity, color: colors.rank.Legendary },
+  { tier: "Platinum", min: 10000, max: 14999, color: colors.rank.Platinum },
+  { tier: "Diamond", min: 15000, max: 24999, color: colors.rank.Diamond },
+  { tier: "Elite", min: 25000, max: 39999, color: colors.rank.Elite },
+  { tier: "Legendary", min: 40000, max: Infinity, color: colors.rank.Legendary },
 ];
 
 export function getRankForPoints(points: number): {
@@ -23,7 +25,7 @@ export function getRankForPoints(points: number): {
     const threshold = RANK_THRESHOLDS[i];
     if (clamped >= threshold.min && clamped <= threshold.max) {
       const isLegendary = threshold.tier === "Legendary";
-      const range = isLegendary ? 30000 : threshold.max - threshold.min + 1;
+      const range = isLegendary ? 40000 : threshold.max - threshold.min + 1;
       const progress = isLegendary
         ? Math.min((clamped - threshold.min) / range, 1)
         : (clamped - threshold.min) / range;
@@ -101,17 +103,20 @@ export function getRankDisplayName(tier: RankTier): string {
   return tier;
 }
 
+const RANK_ORDER: RankTier[] = [
+  "Iron",
+  "Bronze",
+  "Silver",
+  "Gold",
+  "Platinum",
+  "Diamond",
+  "Elite",
+  "Legendary",
+];
+
 export function getNextRankTier(tier: RankTier): RankTier | null {
-  const order: RankTier[] = [
-    "Iron",
-    "Bronze",
-    "Silver",
-    "Gold",
-    "Elite",
-    "Legendary",
-  ];
-  const idx = order.indexOf(tier);
-  return idx < order.length - 1 ? order[idx + 1] : null;
+  const idx = RANK_ORDER.indexOf(tier);
+  return idx < RANK_ORDER.length - 1 ? RANK_ORDER[idx + 1] : null;
 }
 
 export function formatPoints(points: number): string {
@@ -119,4 +124,37 @@ export function formatPoints(points: number): string {
     return `${(points / 1000).toFixed(1)}k`;
   }
   return points.toLocaleString();
+}
+
+export interface BonusResult {
+  consistencyBonus: number;
+  streakBonus: number;
+  balanceBonus: number;
+  volumeBonus: number;
+  total: number;
+}
+
+export function calculateBonuses(
+  sessionsThisWeek: number,
+  currentStreak: number,
+  trainedSwim: boolean,
+  trainedBike: boolean,
+  trainedRun: boolean,
+  sessionDurationMinutes: number
+): BonusResult {
+  const consistencyBonus = sessionsThisWeek >= 3 ? 50 : 0;
+  const streakBonus = currentStreak * 20;
+  const balanceBonus = trainedSwim && trainedBike && trainedRun ? 100 : 0;
+  let volumeBonus = 0;
+  if (sessionDurationMinutes >= 120) volumeBonus = 50;
+  else if (sessionDurationMinutes >= 90) volumeBonus = 30;
+  else if (sessionDurationMinutes >= 60) volumeBonus = 15;
+
+  return {
+    consistencyBonus,
+    streakBonus,
+    balanceBonus,
+    volumeBonus,
+    total: consistencyBonus + streakBonus + balanceBonus + volumeBonus,
+  };
 }
