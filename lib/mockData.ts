@@ -9,6 +9,11 @@ import {
   Milestone,
   RaceGoal,
   WeeklyVolume,
+  TrainingPlan,
+  DisciplineAvailability,
+  SocialProfile,
+  FriendLeaderboardEntry,
+  ConnectedDevice,
 } from "@/types";
 
 export const mockUser: UserProfile = {
@@ -402,6 +407,63 @@ export const mockWeeklyVolumes: WeeklyVolume[] = [
   { week: "W2 Mar", swimHours: 3.0, bikeHours: 3.5, runHours: 2.5 },
   { week: "W3 Mar", swimHours: 2.0, bikeHours: 5.0, runHours: 3.5 },
   { week: "W4 Mar", swimHours: 2.8, bikeHours: 4.5, runHours: 2.0 },
+];
+
+// Training Plan mock data (Task 3)
+export const mockTrainingPlan: TrainingPlan = {
+  name: "PREP plan",
+  currentWeek: 1,
+  totalWeeks: 20,
+  phase: "BASE",
+  weeklyPlan: [
+    { day: "MON", discipline: "bike", title: "1 hr Easy Ride", duration: 60, distance: 22.4, completed: true, actualDuration: 63, actualDistance: 24.9 },
+    { day: "TUE", discipline: "swim", title: "Breathing Rhythm Intro (10x50)", duration: 19, distance: 0.5, completed: true, actualDuration: 22, actualDistance: 0.5 },
+    { day: "WED", discipline: "run", title: "1 hr 30 min Long Run", duration: 90, distance: null, completed: false },
+    { day: "THU", discipline: "rest", title: "Rest Day", duration: 0, distance: null, completed: true },
+    { day: "FRI", discipline: "swim", title: "Technique Drills (8x100)", duration: 35, distance: 0.8, completed: false },
+    { day: "SAT", discipline: "bike", title: "2 hr Endurance Ride", duration: 120, distance: 48, completed: false },
+    { day: "SUN", discipline: "run", title: "45 min Easy Run", duration: 45, distance: 7, completed: false },
+  ],
+};
+
+// Availability mock data (Task 4)
+export const mockAvailability: DisciplineAvailability = {
+  swim: ["TUE", "THU", "SAT"],
+  bike: ["MON", "WED", "SAT"],
+  run: ["TUE", "WED", "FRI", "SUN"],
+  preferredLongRideDay: "SAT",
+};
+
+// Social Profile mock data (Task 6)
+export const mockSocialProfile: SocialProfile = {
+  followers: 431,
+  following: 77,
+  bio: "24 - Running for 3 months. Obsessed with getting faster.",
+  weeklyDistance: 28.73,
+  weeklyTime: 261,
+  weeklyElevation: 331,
+  rrChange: 66,
+};
+
+// Friends Leaderboard mock data (Task 7)
+export const mockFriendsLeaderboard: FriendLeaderboardEntry[] = [
+  { rank: 1, userId: "u-020", displayName: "Marcus Chen", avatarUrl: null, points: 15200, tier: "Diamond", tierColor: "#22D3EE", isFriend: true, avatarLetter: "M" },
+  { rank: 2, userId: "u-021", displayName: "Sarah Kimura", avatarUrl: null, points: 12800, tier: "Platinum", tierColor: "#818CF8", isFriend: true, avatarLetter: "S" },
+  { rank: 3, userId: "u-022", displayName: "Diego Ramirez", avatarUrl: null, points: 11450, tier: "Platinum", tierColor: "#818CF8", isFriend: true, avatarLetter: "D" },
+  { rank: 4, userId: "u-023", displayName: "Emma Walsh", avatarUrl: null, points: 9870, tier: "Gold", tierColor: "#F59E0B", isFriend: true, avatarLetter: "E" },
+  { rank: 5, userId: "u-024", displayName: "Kai Nakamura", avatarUrl: null, points: 8650, tier: "Gold", tierColor: "#F59E0B", isFriend: true, avatarLetter: "K" },
+  { rank: 6, userId: "user-001", displayName: "Alex Rivera", avatarUrl: null, points: 4350, tier: "Silver", tierColor: "#94A3B8", isFriend: false, avatarLetter: "A" },
+  { rank: 7, userId: "u-025", displayName: "Lena Mueller", avatarUrl: null, points: 4100, tier: "Silver", tierColor: "#94A3B8", isFriend: true, avatarLetter: "L" },
+  { rank: 8, userId: "u-026", displayName: "Jake Turner", avatarUrl: null, points: 3800, tier: "Silver", tierColor: "#94A3B8", isFriend: true, avatarLetter: "J" },
+  { rank: 9, userId: "u-027", displayName: "Priya Sharma", avatarUrl: null, points: 2200, tier: "Bronze", tierColor: "#D97706", isFriend: true, avatarLetter: "P" },
+  { rank: 10, userId: "u-028", displayName: "Chris Lang", avatarUrl: null, points: 1650, tier: "Bronze", tierColor: "#CD7F32", isFriend: true, avatarLetter: "C" },
+];
+
+// Connected Devices mock data (Task 8)
+export const mockConnectedDevices: ConnectedDevice[] = [
+  { id: "dev-001", name: "Apple Health", type: "apple_health", isConnected: false, lastSync: null },
+  { id: "dev-002", name: "Garmin Connect", type: "garmin", isConnected: false, lastSync: null },
+  { id: "dev-003", name: "Strava", type: "strava", isConnected: false, lastSync: null },
 ];
 
 export const MOTIVATIONAL_MESSAGES = [

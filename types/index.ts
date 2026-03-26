@@ -227,3 +227,105 @@ export interface WeeklyVolume {
   bikeHours: number;
   runHours: number;
 }
+
+// Training Plan types (Task 3)
+export interface TrainingPlanWorkout {
+  day: string;
+  discipline: Discipline | "rest";
+  title: string;
+  duration: number;
+  distance: number | null;
+  completed: boolean;
+  actualDuration?: number;
+  actualDistance?: number;
+}
+
+export interface TrainingPlan {
+  name: string;
+  currentWeek: number;
+  totalWeeks: number;
+  phase: string;
+  weeklyPlan: TrainingPlanWorkout[];
+}
+
+// Availability Scheduler types (Task 4)
+export interface DisciplineAvailability {
+  swim: string[];
+  bike: string[];
+  run: string[];
+  preferredLongRideDay: string | null;
+}
+
+// GPS Workout types (Task 1)
+export interface GpsCoordinate {
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+}
+
+export interface LiveWorkoutState {
+  isActive: boolean;
+  isPaused: boolean;
+  discipline: Discipline;
+  startTime: number | null;
+  elapsedTime: number;
+  distance: number;
+  coordinates: GpsCoordinate[];
+  splits: number[];
+}
+
+// Social Profile types (Task 6)
+export interface SocialProfile {
+  followers: number;
+  following: number;
+  bio: string;
+  weeklyDistance: number;
+  weeklyTime: number;
+  weeklyElevation: number;
+  rrChange: number;
+}
+
+// Friends Leaderboard types (Task 7)
+export type LeaderboardTab = "friends" | "global" | "local";
+
+export interface FriendLeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  points: number;
+  tier: RankTier;
+  tierColor: string;
+  isFriend: boolean;
+  avatarLetter: string;
+}
+
+// Health Integration types (Task 8)
+export interface ConnectedDevice {
+  id: string;
+  name: string;
+  type: "apple_health" | "garmin" | "strava";
+  isConnected: boolean;
+  lastSync: string | null;
+}
+
+export interface HealthWorkout {
+  id: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  duration: number;
+  distance: number;
+  heartRate?: number;
+  calories?: number;
+}
+
+export interface GarminWorkout {
+  id: string;
+  activityType: string;
+  startTime: string;
+  duration: number;
+  distance: number;
+  avgHeartRate?: number;
+  avgPace?: number;
+}
