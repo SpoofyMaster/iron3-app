@@ -5,8 +5,11 @@ import {
   ScrollView,
   StyleSheet,
   SafeAreaView,
+  TouchableOpacity,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -19,11 +22,28 @@ import {
   PremiumBanner,
   StreakBadge,
   GradientBackground,
+  LevelStreakBar,
 } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatDistance } from "@/lib/scoring";
 import { getTriRank, getRankForPoints } from "@/lib/ranks";
 import { MOTIVATIONAL_MESSAGES } from "@/lib/mockData";
+import { Discipline } from "@/types";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const DISCIPLINE_COLORS: Record<string, string> = {
+  swim: colors.swim,
+  bike: colors.bike,
+  run: colors.run,
+};
+
+const DISCIPLINE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  swim: "water",
+  bike: "bicycle",
+  run: "walk",
+  rest: "bed-outline",
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -38,6 +58,7 @@ export default function HomeScreen() {
   const currentStreak = useAppStore((s) => s.currentStreak);
   const raceGoal = useAppStore((s) => s.raceGoal);
   const milestones = useAppStore((s) => s.milestones);
+  const trainingPlan = useAppStore((s) => s.trainingPlan);
 
   const recentActivities = useMemo(() => activities.slice(0, 5), [activities]);
 
@@ -77,15 +98,38 @@ export default function HomeScreen() {
     return { discipline: "Run", icon: "walk" as const, color: colors.run, days: runDays };
   }, [lastSwim, lastBike, lastRun]);
 
-  const levelInfo = useMemo(() => {
-    const totalXp = triRank.overallPoints;
-    const level = Math.floor(totalXp / 500) + 1;
-    const levelXp = totalXp % 500;
-    return { level, progress: levelXp / 500, xp: levelXp };
-  }, [triRank.overallPoints]);
+  // Today's planned workout from training plan
+  const todayIdx = new Date().getDay();
+  const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const todayName = dayNames[todayIdx];
+  const todayWorkout = useMemo(
+    () => trainingPlan.weeklyPlan.find((w) => w.day === todayName),
+    [trainingPlan, todayName]
+  );
+
+  // Training plan progress rings data
+  const planProgress = useMemo(() => {
+    const plan = trainingPlan.weeklyPlan;
+    const swimPlanned = plan.filter((w) => w.discipline === "swim").reduce((sum, w) => sum + w.duration, 0);
+    const swimDone = plan.filter((w) => w.discipline === "swim" && w.completed).reduce((sum, w) => sum + (w.actualDuration ?? w.duration), 0);
+    const bikePlanned = plan.filter((w) => w.discipline === "bike").reduce((sum, w) => sum + w.duration, 0);
+    const bikeDone = plan.filter((w) => w.discipline === "bike" && w.completed).reduce((sum, w) => sum + (w.actualDuration ?? w.duration), 0);
+    const runPlanned = plan.filter((w) => w.discipline === "run").reduce((sum, w) => sum + w.duration, 0);
+    const runDone = plan.filter((w) => w.discipline === "run" && w.completed).reduce((sum, w) => sum + (w.actualDuration ?? w.duration), 0);
+    const totalPlanned = swimPlanned + bikePlanned + runPlanned;
+    const totalDone = swimDone + bikeDone + runDone;
+    return { swimPlanned, swimDone, bikePlanned, bikeDone, runPlanned, runDone, totalPlanned, totalDone };
+  }, [trainingPlan]);
+
+  const formatMinToHrMin = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return h > 0 ? `${h} hr ${m} min` : `${m} min`;
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
+      <LevelStreakBar />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -93,33 +137,43 @@ export default function HomeScreen() {
       >
         {/* Gradient Header Area */}
         <GradientBackground style={styles.headerGradient} variant="purple">
-          {/* XP Level Bar */}
-          <View style={styles.levelBar}>
-            <View style={styles.levelLeft}>
-              <View style={styles.levelBadge}>
-                <Text style={styles.levelNumber}>{levelInfo.level}</Text>
-              </View>
-              <View style={styles.levelProgress}>
-                <View style={styles.levelTrack}>
-                  <LinearGradient
-                    colors={[colors.glowPurple, colors.glowCyan]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.levelFill, { width: `${Math.max(levelInfo.progress * 100, 3)}%` }]}
-                  />
-                </View>
-                <Text style={styles.levelXp}>{levelInfo.xp}/500 XP</Text>
-              </View>
-            </View>
-            <StreakBadge streak={currentStreak} size="md" />
-          </View>
-
           <View style={styles.header}>
             <View>
               <Text style={styles.greeting}>Welcome back,</Text>
               <Text style={styles.name}>{displayName}</Text>
             </View>
           </View>
+
+          {/* Today's Planned Workout */}
+          {todayWorkout && todayWorkout.discipline !== "rest" && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push("/workout/live")}
+            >
+              <GlassCard style={styles.todayCard} variant="highlighted">
+                <View style={styles.todayRow}>
+                  <View style={[styles.todayIcon, { backgroundColor: (DISCIPLINE_COLORS[todayWorkout.discipline] ?? colors.textMuted) + "20" }]}>
+                    <Ionicons
+                      name={DISCIPLINE_ICONS[todayWorkout.discipline] ?? "fitness"}
+                      size={22}
+                      color={DISCIPLINE_COLORS[todayWorkout.discipline] ?? colors.textMuted}
+                    />
+                  </View>
+                  <View style={styles.todayInfo}>
+                    <Text style={styles.todayLabel}>TODAY'S WORKOUT</Text>
+                    <Text style={styles.todayTitle}>{todayWorkout.title}</Text>
+                    <Text style={styles.todaySub}>
+                      {todayWorkout.duration} min
+                      {todayWorkout.distance ? ` • ${todayWorkout.distance} km` : ""}
+                    </Text>
+                  </View>
+                  <View style={styles.todayArrow}>
+                    <Ionicons name="play-circle" size={36} color={colors.glowCyan} />
+                  </View>
+                </View>
+              </GlassCard>
+            </TouchableOpacity>
+          )}
 
           {daysToRace !== null && (
             <GlassCard style={styles.raceCountdown} variant="highlighted">
@@ -142,19 +196,97 @@ export default function HomeScreen() {
             <Text style={styles.motivationalText}>💬 {motivationalMsg}</Text>
           </GlassCard>
 
-          {/* HUGE TriRank Display */}
           <TriRankDisplay triRank={triRank} />
         </GradientBackground>
+
+        {/* Training Plan Progress Rings */}
+        <SectionHeader title={`${trainingPlan.name} — Week ${trainingPlan.currentWeek}`} />
+        <View style={styles.ringsSection}>
+          <View style={styles.ringsRow}>
+            {(["swim", "bike", "run"] as const).map((disc) => {
+              const planned = planProgress[`${disc}Planned` as keyof typeof planProgress] as number;
+              const done = planProgress[`${disc}Done` as keyof typeof planProgress] as number;
+              const progress = planned > 0 ? Math.min(done / planned, 1) : 0;
+              const discColor = DISCIPLINE_COLORS[disc];
+              return (
+                <View key={disc} style={styles.ringItem}>
+                  <View style={styles.ringOuter}>
+                    <View
+                      style={[
+                        styles.ringProgress,
+                        {
+                          borderTopColor: discColor,
+                          borderRightColor: progress > 0.25 ? discColor : "transparent",
+                          borderBottomColor: progress > 0.5 ? discColor : "transparent",
+                          borderLeftColor: progress > 0.75 ? discColor : "transparent",
+                          transform: [{ rotate: `${progress * 360}deg` }],
+                        },
+                      ]}
+                    />
+                    <View style={styles.ringInner}>
+                      <Ionicons name={DISCIPLINE_ICONS[disc]} size={16} color={discColor} />
+                    </View>
+                  </View>
+                  <Text style={[styles.ringLabel, { color: discColor }]}>
+                    {disc.charAt(0).toUpperCase() + disc.slice(1)}
+                  </Text>
+                  <Text style={styles.ringProgress2}>{formatMinToHrMin(done)}</Text>
+                </View>
+              );
+            })}
+          </View>
+          <Text style={styles.totalDuration}>
+            Total: {formatMinToHrMin(planProgress.totalDone)} / {formatMinToHrMin(planProgress.totalPlanned)}
+          </Text>
+        </View>
+
+        {/* Weekly Plan */}
+        <GlassCard style={{ marginHorizontal: spacing.lg }}>
+          {trainingPlan.weeklyPlan.map((workout, idx) => {
+            const wColor = DISCIPLINE_COLORS[workout.discipline] ?? colors.textMuted;
+            const isToday = workout.day === todayName;
+            return (
+              <View key={workout.day}>
+                <View style={[styles.planRow, isToday && styles.planRowToday]}>
+                  <Text style={[styles.planDay, isToday && { color: colors.glowCyan }]}>{workout.day}</Text>
+                  <View style={[styles.planIcon, { backgroundColor: wColor + "15" }]}>
+                    <Ionicons
+                      name={DISCIPLINE_ICONS[workout.discipline] ?? "bed-outline"}
+                      size={14}
+                      color={wColor}
+                    />
+                  </View>
+                  <View style={styles.planInfo}>
+                    <Text style={styles.planTitle} numberOfLines={1}>{workout.title}</Text>
+                    {workout.discipline !== "rest" && (
+                      <Text style={styles.planStats}>
+                        {workout.duration} min{workout.distance ? ` • ${workout.distance} km` : ""}
+                      </Text>
+                    )}
+                  </View>
+                  {workout.completed ? (
+                    <View style={styles.checkCircle}>
+                      <Ionicons name="checkmark" size={14} color={colors.success} />
+                    </View>
+                  ) : workout.discipline !== "rest" ? (
+                    <View style={styles.emptyCircle} />
+                  ) : null}
+                </View>
+                {idx < trainingPlan.weeklyPlan.length - 1 && <View style={styles.divider} />}
+              </View>
+            );
+          })}
+        </GlassCard>
 
         {/* Weekly Progress Section */}
         <View style={styles.weeklyRow}>
           <GlassCard style={styles.consistencyCard}>
             <Text style={styles.consistencyTitle}>Weekly Goal</Text>
-            <View style={styles.ringContainer}>
-              <View style={styles.ringOuter}>
+            <View style={styles.consistencyRingContainer}>
+              <View style={styles.consistencyRingOuter}>
                 <View
                   style={[
-                    styles.ringProgress,
+                    styles.consistencyRingProgress,
                     {
                       transform: [{ rotate: `${weeklyProgress * 360}deg` }],
                       borderTopColor: colors.glowPurple,
@@ -164,8 +296,8 @@ export default function HomeScreen() {
                     },
                   ]}
                 />
-                <View style={styles.ringInner}>
-                  <Text style={styles.ringText}>{weeklyStats.totalActivities}/{weeklyGoal}</Text>
+                <View style={styles.consistencyRingInner}>
+                  <Text style={styles.consistencyRingText}>{weeklyStats.totalActivities}/{weeklyGoal}</Text>
                 </View>
               </View>
             </View>
@@ -267,7 +399,12 @@ export default function HomeScreen() {
         <GlassCard>
           {recentActivities.map((activity, idx) => (
             <View key={activity.id}>
-              <ActivityRow activity={activity} />
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push({ pathname: "/workout/[id]", params: { id: activity.id } })}
+              >
+                <ActivityRow activity={activity} />
+              </TouchableOpacity>
               {idx < recentActivities.length - 1 && (
                 <View style={styles.divider} />
               )}
@@ -297,51 +434,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 16,
   },
-  levelBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  levelLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  levelBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(139, 92, 246, 0.2)",
-    borderWidth: 1.5,
-    borderColor: "rgba(139, 92, 246, 0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  levelNumber: {
-    color: colors.glowPurple,
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.extrabold,
-  },
-  levelProgress: {
-    flex: 1,
-    gap: 3,
-  },
-  levelTrack: {
-    height: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    borderRadius: borderRadius.full,
-    overflow: "hidden",
-  },
-  levelFill: {
-    height: "100%",
-    borderRadius: borderRadius.full,
-  },
-  levelXp: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: fontWeight.medium,
-  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -357,6 +449,43 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.extrabold,
     marginTop: 2,
+  },
+  todayCard: {
+    paddingVertical: 14,
+  },
+  todayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  todayIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  todayInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  todayLabel: {
+    color: colors.glowCyan,
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 2,
+  },
+  todayTitle: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+  },
+  todaySub: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  todayArrow: {
+    opacity: 0.8,
   },
   raceCountdown: {
     paddingVertical: 14,
@@ -412,6 +541,107 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+  ringsSection: {
+    paddingHorizontal: spacing.lg,
+    gap: 8,
+  },
+  ringsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    gap: 10,
+  },
+  ringItem: {
+    alignItems: "center",
+    gap: 6,
+  },
+  ringOuter: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 4,
+    borderColor: colors.surfaceLight,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  ringProgress: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 4,
+    borderRadius: 28,
+  },
+  ringInner: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ringLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+  },
+  ringProgress2: {
+    color: colors.textMuted,
+    fontSize: 10,
+  },
+  totalDuration: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    textAlign: "center",
+  },
+  planRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+  },
+  planRowToday: {
+    backgroundColor: "rgba(6, 182, 212, 0.05)",
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    borderRadius: borderRadius.sm,
+  },
+  planDay: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    width: 30,
+    letterSpacing: 0.5,
+  },
+  planIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planInfo: {
+    flex: 1,
+    gap: 1,
+  },
+  planTitle: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+  planStats: {
+    color: colors.textMuted,
+    fontSize: 10,
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceGlassBorder,
+  },
   weeklyRow: {
     flexDirection: "row",
     gap: 10,
@@ -428,11 +658,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
   },
-  ringContainer: {
+  consistencyRingContainer: {
     alignItems: "center",
     justifyContent: "center",
   },
-  ringOuter: {
+  consistencyRingOuter: {
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -442,16 +672,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     position: "relative",
   },
-  ringProgress: {
+  consistencyRingProgress: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 4,
     borderRadius: 32,
   },
-  ringInner: {
+  consistencyRingInner: {
     alignItems: "center",
     justifyContent: "center",
   },
-  ringText: {
+  consistencyRingText: {
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,

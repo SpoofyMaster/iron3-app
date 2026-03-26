@@ -17,6 +17,7 @@ import {
   PremiumLock,
   StreakBadge,
   GradientBackground,
+  LevelStreakBar,
 } from "@/components";
 import { getTriRank, RANK_THRESHOLDS } from "@/lib/ranks";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
@@ -83,6 +84,7 @@ export default function ProgressScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <LevelStreakBar />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}

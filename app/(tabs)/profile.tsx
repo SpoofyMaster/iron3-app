@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,27 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
-import { GlassCard, RankBadge, MiniChart, SectionHeader } from "@/components";
+import { GlassCard, RankBadge, MiniChart, SectionHeader, LevelStreakBar } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatPoints, getTriRank } from "@/lib/ranks";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const WEEKLY_DISTANCES = [
+  { week: "W1", distance: 18.4 },
+  { week: "W2", distance: 22.1 },
+  { week: "W3", distance: 31.5 },
+  { week: "W4", distance: 25.8 },
+  { week: "W5", distance: 19.2 },
+  { week: "W6", distance: 28.7 },
+  { week: "W7", distance: 33.1 },
+  { week: "W8", distance: 28.73 },
+];
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -22,89 +36,149 @@ export default function ProfileScreen() {
   const swimPoints = useAppStore((s) => s.swimPoints);
   const bikePoints = useAppStore((s) => s.bikePoints);
   const runPoints = useAppStore((s) => s.runPoints);
-  const triRank = getTriRank(swimPoints, bikePoints, runPoints);
+  const triRank = useMemo(() => getTriRank(swimPoints, bikePoints, runPoints), [swimPoints, bikePoints, runPoints]);
   const rankHistory = useAppStore((s) => s.rankHistory);
   const activities = useAppStore((s) => s.activities);
   const togglePremium = useAppStore((s) => s.togglePremium);
+  const socialProfile = useAppStore((s) => s.socialProfile);
 
   const overallHistory = rankHistory.map((h) => h.overallPoints);
   const historyLabels = rankHistory.map((h) =>
     new Date(h.date).toLocaleDateString("en-US", { month: "short" })
   );
 
-  const totalActivities = activities.length;
-  const totalPoints = activities.reduce((sum, a) => sum + a.pointsEarned, 0);
-  const memberSince = new Date(user.createdAt).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const recentRuns = useMemo(
+    () => activities.filter((a) => a.discipline === "run").slice(0, 3),
+    [activities]
+  );
+
+  const maxDist = Math.max(...WEEKLY_DISTANCES.map((w) => w.distance));
+
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  const weekLabel = `Week of ${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 
   return (
     <SafeAreaView style={styles.safe}>
+      <LevelStreakBar />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { borderColor: triRank.tierColor }]}>
-              <Text style={styles.avatarText}>
-                {user.displayName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.rankBadgeOverlay}>
-              <RankBadge
-                tier={triRank.tier}
-                tierColor={triRank.tierColor}
-                size="sm"
-              />
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              <View style={[styles.avatar, { borderColor: triRank.tierColor }]}>
+                <Text style={styles.avatarText}>
+                  {user.displayName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.rankBadgeOverlay}>
+                <RankBadge
+                  tier={triRank.tier}
+                  tierColor={triRank.tierColor}
+                  size="sm"
+                />
+              </View>
             </View>
           </View>
-          <Text style={styles.name}>{user.displayName}</Text>
-          <Text style={[styles.rankText, { color: triRank.tierColor }]}>
-            {triRank.tier} • {formatPoints(triRank.overallPoints)} pts
-          </Text>
-          <Text style={styles.memberSince}>Member since {memberSince}</Text>
+          <View style={styles.profileInfo}>
+            <Text style={styles.name}>{user.displayName}</Text>
+            <Text style={styles.followers}>
+              <Text style={styles.followersBold}>{socialProfile.followers}</Text> followers  
+              <Text style={styles.followersBold}> {socialProfile.following}</Text> following
+            </Text>
+            <Text style={styles.bio}>{socialProfile.bio}</Text>
+          </View>
+          <View style={styles.rankEmblem}>
+            <RankBadge tier={triRank.tier} tierColor={triRank.tierColor} size="lg" />
+            <Text style={[styles.rankText, { color: triRank.tierColor }]}>
+              {triRank.tier}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <GlassCard style={styles.statItem}>
-            <Text style={styles.statValue}>{totalActivities}</Text>
-            <Text style={styles.statLabel}>Activities</Text>
+        {/* Week Header */}
+        <View style={styles.weekHeader}>
+          <Text style={styles.weekLabel}>{weekLabel}</Text>
+          <TouchableOpacity activeOpacity={0.7}>
+            <Text style={styles.viewAll}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 2x2 Stat Cards */}
+        <View style={styles.statGrid}>
+          <GlassCard style={styles.statGridCard}>
+            <Text style={styles.statGridValue}>{socialProfile.weeklyDistance.toFixed(2)} km</Text>
+            <Text style={styles.statGridLabel}>Distance</Text>
           </GlassCard>
-          <GlassCard style={styles.statItem}>
-            <Text style={styles.statValue}>{formatPoints(totalPoints)}</Text>
-            <Text style={styles.statLabel}>Points Earned</Text>
+          <GlassCard style={styles.statGridCard}>
+            <Text style={styles.statGridValue}>
+              {Math.floor(socialProfile.weeklyTime / 60)}h {socialProfile.weeklyTime % 60}m
+            </Text>
+            <Text style={styles.statGridLabel}>Time</Text>
           </GlassCard>
-          <GlassCard style={styles.statItem}>
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Disciplines</Text>
+          <GlassCard style={styles.statGridCard}>
+            <Text style={styles.statGridValue}>{socialProfile.weeklyElevation}m</Text>
+            <Text style={styles.statGridLabel}>Elevation</Text>
+          </GlassCard>
+          <GlassCard style={styles.statGridCard}>
+            <Text style={[styles.statGridValue, { color: colors.success }]}>+{socialProfile.rrChange}</Text>
+            <Text style={styles.statGridLabel}>RR Change</Text>
           </GlassCard>
         </View>
 
-        <View style={styles.rankCards}>
-          {[triRank.swimRank, triRank.bikeRank, triRank.runRank].map((r) => (
-            <GlassCard key={r.discipline} style={styles.miniRankCard}>
-              <View
-                style={[
-                  styles.miniRankDot,
-                  { backgroundColor: r.tierColor },
-                ]}
-              />
-              <Text style={styles.miniRankDiscipline}>
-                {r.discipline.charAt(0).toUpperCase() + r.discipline.slice(1)}
-              </Text>
-              <Text style={[styles.miniRankTier, { color: r.tierColor }]}>
-                {r.tier}
-              </Text>
-              <Text style={styles.miniRankPoints}>
-                {formatPoints(r.points)}
-              </Text>
-            </GlassCard>
-          ))}
-        </View>
+        {/* Weekly Distance Chart */}
+        <SectionHeader title="Activity" />
+        <GlassCard>
+          <View style={styles.chartContainer}>
+            {WEEKLY_DISTANCES.map((w, idx) => {
+              const barHeight = (w.distance / maxDist) * 80;
+              return (
+                <View key={idx} style={styles.chartBar}>
+                  <View style={[styles.chartBarFill, { height: barHeight, backgroundColor: colors.glowCyan }]} />
+                  <Text style={styles.chartLabel}>{w.week}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </GlassCard>
 
+        {/* Recent Runs */}
+        <SectionHeader title="Recent Runs" />
+        {recentRuns.map((run) => {
+          const paceMin = Math.floor(run.pace / 60);
+          const paceSec = Math.floor(run.pace % 60);
+          return (
+            <TouchableOpacity
+              key={run.id}
+              activeOpacity={0.7}
+              onPress={() => router.push({ pathname: "/workout/[id]", params: { id: run.id } })}
+            >
+              <GlassCard style={styles.recentRunCard}>
+                <View style={styles.recentRunRow}>
+                  <View style={styles.recentRunInfo}>
+                    <Text style={styles.recentRunTitle}>{run.title}</Text>
+                    <Text style={styles.recentRunStats}>
+                      {run.distance} mi • {paceMin}:{paceSec.toString().padStart(2, "0")} mi pace • {Math.floor(run.duration / 60)}:{(run.duration % 60).toString().padStart(2, "0")}
+                    </Text>
+                  </View>
+                  <View style={styles.recentRunPoints}>
+                    <Text style={styles.recentRunRR}>+ {run.pointsEarned} RR</Text>
+                    <Text style={styles.recentRunGained}>Gained</Text>
+                  </View>
+                </View>
+              </GlassCard>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Rank History */}
         <SectionHeader title="Rank History" />
         <GlassCard>
           <MiniChart
@@ -123,25 +197,31 @@ export default function ProfileScreen() {
             label="Edit Profile"
             onPress={() => {}}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="notifications-outline"
             label="Notifications"
             onPress={() => {}}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="fitness-outline"
-            label="Health Data"
-            onPress={() => {}}
+            label="Connected Devices"
+            onPress={() => router.push("/settings/devices")}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
+          <SettingsRow
+            icon="calendar-outline"
+            label="Training Availability"
+            onPress={() => router.push("/settings/availability")}
+          />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="analytics-outline"
             label="Units & Preferences"
             onPress={() => {}}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <View style={styles.settingsRow}>
             <View style={styles.settingsLeft}>
               <Ionicons
@@ -161,25 +241,25 @@ export default function ProfileScreen() {
               thumbColor={user.isPremium ? colors.primary : colors.textMuted}
             />
           </View>
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="card-outline"
             label="Manage Subscription"
             onPress={() => router.push("/paywall")}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="help-circle-outline"
             label="Help & Support"
             onPress={() => {}}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="document-text-outline"
             label="Privacy Policy"
             onPress={() => {}}
           />
-          <View style={styles.divider} />
+          <View style={styles.settingsDivider} />
           <SettingsRow
             icon="log-out-outline"
             label="Sign Out"
@@ -246,16 +326,17 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: 32,
-    gap: 20,
+    gap: 16,
   },
-  header: {
-    alignItems: "center",
+  profileHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
     marginTop: 8,
-    gap: 4,
   },
+  avatarSection: {},
   avatarContainer: {
     position: "relative",
-    marginBottom: 8,
   },
   avatar: {
     width: 80,
@@ -276,66 +357,128 @@ const styles = StyleSheet.create({
     bottom: -4,
     right: -4,
   },
-  name: {
-    color: colors.text,
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-  },
-  rankText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-  },
-  memberSince: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  statItem: {
+  profileInfo: {
     flex: 1,
-    alignItems: "center",
-    paddingVertical: 14,
     gap: 4,
   },
-  statValue: {
+  name: {
     color: colors.text,
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
   },
-  statLabel: {
+  followers: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+  },
+  followersBold: {
+    color: colors.text,
+    fontWeight: fontWeight.bold,
+  },
+  bio: {
     color: colors.textMuted,
     fontSize: fontSize.xs,
-    textAlign: "center",
+    lineHeight: 16,
+    marginTop: 2,
   },
-  rankCards: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  miniRankCard: {
-    flex: 1,
+  rankEmblem: {
     alignItems: "center",
-    paddingVertical: 12,
     gap: 4,
   },
-  miniRankDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  rankText: {
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 1,
   },
-  miniRankDiscipline: {
-    color: colors.textSecondary,
-    fontSize: fontSize.xs,
+  weekHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  weekLabel: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  viewAll: {
+    color: colors.glowCyan,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
   },
-  miniRankTier: {
+  statGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  statGridCard: {
+    width: (SCREEN_WIDTH - spacing.lg * 2 - 10) / 2,
+    alignItems: "center",
+    paddingVertical: 14,
+    gap: 4,
+  },
+  statGridValue: {
+    color: colors.text,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+  },
+  statGridLabel: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  chartContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 6,
+    height: 100,
+    paddingTop: 8,
+  },
+  chartBar: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  chartBarFill: {
+    width: "70%",
+    borderRadius: 4,
+    minHeight: 4,
+  },
+  chartLabel: {
+    color: colors.textMuted,
+    fontSize: 9,
+  },
+  recentRunCard: {
+    paddingVertical: 12,
+  },
+  recentRunRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  recentRunInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  recentRunTitle: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+  },
+  recentRunStats: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  recentRunPoints: {
+    alignItems: "flex-end",
+    gap: 1,
+  },
+  recentRunRR: {
+    color: colors.success,
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
   },
-  miniRankPoints: {
+  recentRunGained: {
     color: colors.textMuted,
-    fontSize: fontSize.xs,
+    fontSize: 10,
   },
   settingsCard: {
     padding: 0,
@@ -358,7 +501,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.regular,
   },
-  divider: {
+  settingsDivider: {
     height: 1,
     backgroundColor: colors.surfaceGlassBorder,
     marginHorizontal: 16,
