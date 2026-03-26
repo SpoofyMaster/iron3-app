@@ -34,8 +34,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   swim: colors.swim,
-  bike: colors.bike,
-  run: colors.run,
+  bike: "#EC4899",
+  run: "#F97316",
 };
 
 const DISCIPLINE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -276,6 +276,48 @@ export default function HomeScreen() {
               </View>
             );
           })}
+        </GlassCard>
+
+        {/* Monthly Calendar */}
+        <SectionHeader title="March 2026" />
+        <GlassCard style={{ marginHorizontal: spacing.lg }}>
+          <View style={styles.calendarGrid}>
+            {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+              <Text key={`hdr-${i}`} style={styles.calendarDayHeader}>{d}</Text>
+            ))}
+            {(() => {
+              const firstDayOfWeek = new Date(2026, 2, 1).getDay();
+              const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+              const cells: React.ReactNode[] = [];
+              for (let i = 0; i < startOffset; i++) {
+                cells.push(<View key={`empty-${i}`} style={styles.calendarCell} />);
+              }
+              for (let dayNum = 1; dayNum <= 31; dayNum++) {
+                const dayOfWeek = new Date(2026, 2, dayNum).getDay();
+                const mondayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const planItem = trainingPlan.weeklyPlan.find((w) => {
+                  const dayMap: Record<string, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
+                  return dayMap[w.day] === mondayIdx && w.discipline !== "rest";
+                });
+                const discColor = planItem ? (DISCIPLINE_COLORS[planItem.discipline] ?? colors.textMuted) : undefined;
+                const isToday = dayNum === new Date().getDate() && new Date().getMonth() === 2;
+                cells.push(
+                  <View
+                    key={dayNum}
+                    style={[styles.calendarCell, isToday && styles.calendarCellToday]}
+                  >
+                    <Text style={[styles.calendarDayNum, isToday && { color: colors.glowCyan }]}>
+                      {dayNum}
+                    </Text>
+                    {discColor && (
+                      <View style={[styles.calendarDot, { backgroundColor: discColor }]} />
+                    )}
+                  </View>
+                );
+              }
+              return cells;
+            })()}
+          </View>
         </GlassCard>
 
         {/* Weekly Progress Section */}
@@ -641,6 +683,38 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
+  },
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  calendarDayHeader: {
+    width: `${100 / 7}%` as any,
+    textAlign: "center",
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    paddingBottom: 8,
+  },
+  calendarCell: {
+    width: `${100 / 7}%` as any,
+    alignItems: "center",
+    paddingVertical: 6,
+    gap: 2,
+  },
+  calendarCellToday: {
+    backgroundColor: "rgba(6, 182, 212, 0.08)",
+    borderRadius: borderRadius.sm,
+  },
+  calendarDayNum: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+  },
+  calendarDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   weeklyRow: {
     flexDirection: "row",
