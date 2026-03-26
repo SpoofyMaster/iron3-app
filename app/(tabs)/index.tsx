@@ -19,10 +19,14 @@ import {
 } from "@/components";
 import { colors, fontSize, fontWeight, spacing } from "@/theme";
 import { formatDistance } from "@/lib/scoring";
+import { getTriRank } from "@/lib/ranks";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const triRank = useAppStore((s) => s.getTriRank());
+  const swimPoints = useAppStore((s) => s.swimPoints);
+  const bikePoints = useAppStore((s) => s.bikePoints);
+  const runPoints = useAppStore((s) => s.runPoints);
+  const triRank = getTriRank(swimPoints, bikePoints, runPoints);
   const activities = useAppStore((s) => s.activities);
   const weeklyStats = useAppStore((s) => s.weeklyStats);
   const isPremium = useAppStore((s) => s.user.isPremium);

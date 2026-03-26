@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -29,8 +29,14 @@ export default function LeaderboardScreen() {
   const leaderboardScope = useAppStore((s) => s.leaderboardScope);
   const setLeaderboardFilter = useAppStore((s) => s.setLeaderboardFilter);
   const setLeaderboardScope = useAppStore((s) => s.setLeaderboardScope);
-  const filteredLeaderboard = useAppStore((s) => s.getFilteredLeaderboard());
+  const leaderboard = useAppStore((s) => s.leaderboard);
   const isPremium = useAppStore((s) => s.user.isPremium);
+  const filteredLeaderboard = useMemo(() => {
+    if (leaderboardScope === "friends") {
+      return leaderboard.filter((e) => e.isFriend || e.userId === "user-001");
+    }
+    return leaderboard;
+  }, [leaderboard, leaderboardScope]);
 
   const topThree = filteredLeaderboard.slice(0, 3);
   const rest = filteredLeaderboard.slice(3);

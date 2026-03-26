@@ -14,12 +14,15 @@ import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
 import { GlassCard, RankBadge, MiniChart, SectionHeader } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
-import { formatPoints } from "@/lib/ranks";
+import { formatPoints, getTriRank } from "@/lib/ranks";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAppStore((s) => s.user);
-  const triRank = useAppStore((s) => s.getTriRank());
+  const swimPoints = useAppStore((s) => s.swimPoints);
+  const bikePoints = useAppStore((s) => s.bikePoints);
+  const runPoints = useAppStore((s) => s.runPoints);
+  const triRank = getTriRank(swimPoints, bikePoints, runPoints);
   const rankHistory = useAppStore((s) => s.rankHistory);
   const activities = useAppStore((s) => s.activities);
   const togglePremium = useAppStore((s) => s.togglePremium);
