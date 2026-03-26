@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -17,10 +18,11 @@ import {
   GlassCard,
   PremiumBanner,
   StreakBadge,
+  GradientBackground,
 } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatDistance } from "@/lib/scoring";
-import { getTriRank } from "@/lib/ranks";
+import { getTriRank, getRankForPoints } from "@/lib/ranks";
 import { MOTIVATIONAL_MESSAGES } from "@/lib/mockData";
 
 export default function HomeScreen() {
@@ -75,6 +77,13 @@ export default function HomeScreen() {
     return { discipline: "Run", icon: "walk" as const, color: colors.run, days: runDays };
   }, [lastSwim, lastBike, lastRun]);
 
+  const levelInfo = useMemo(() => {
+    const totalXp = triRank.overallPoints;
+    const level = Math.floor(totalXp / 500) + 1;
+    const levelXp = totalXp % 500;
+    return { level, progress: levelXp / 500, xp: levelXp };
+  }, [triRank.overallPoints]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -82,36 +91,62 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.name}>{displayName}</Text>
-          </View>
-          <StreakBadge streak={currentStreak} size="md" />
-        </View>
-
-        {daysToRace !== null && (
-          <GlassCard style={styles.raceCountdown}>
-            <View style={styles.raceRow}>
-              <View style={styles.raceIcon}>
-                <Text style={styles.raceEmoji}>🏁</Text>
+        {/* Gradient Header Area */}
+        <GradientBackground style={styles.headerGradient} variant="purple">
+          {/* XP Level Bar */}
+          <View style={styles.levelBar}>
+            <View style={styles.levelLeft}>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelNumber}>{levelInfo.level}</Text>
               </View>
-              <View style={styles.raceInfo}>
-                <Text style={styles.raceDays}>{daysToRace} days</Text>
-                <Text style={styles.raceLabel}>
-                  to {raceGoal?.raceName ?? "Race Day"}
-                </Text>
+              <View style={styles.levelProgress}>
+                <View style={styles.levelTrack}>
+                  <LinearGradient
+                    colors={[colors.glowPurple, colors.glowCyan]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.levelFill, { width: `${Math.max(levelInfo.progress * 100, 3)}%` }]}
+                  />
+                </View>
+                <Text style={styles.levelXp}>{levelInfo.xp}/500 XP</Text>
               </View>
             </View>
+            <StreakBadge streak={currentStreak} size="md" />
+          </View>
+
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Welcome back,</Text>
+              <Text style={styles.name}>{displayName}</Text>
+            </View>
+          </View>
+
+          {daysToRace !== null && (
+            <GlassCard style={styles.raceCountdown} variant="highlighted">
+              <View style={styles.raceRow}>
+                <View style={styles.raceIcon}>
+                  <Text style={styles.raceEmoji}>🏁</Text>
+                </View>
+                <View style={styles.raceInfo}>
+                  <Text style={styles.raceDays}>{daysToRace} days</Text>
+                  <Text style={styles.raceLabel}>
+                    to {raceGoal?.raceName ?? "Race Day"}
+                  </Text>
+                </View>
+                <View style={styles.racePulse} />
+              </View>
+            </GlassCard>
+          )}
+
+          <GlassCard style={styles.motivational}>
+            <Text style={styles.motivationalText}>💬 {motivationalMsg}</Text>
           </GlassCard>
-        )}
 
-        <GlassCard style={styles.motivational}>
-          <Text style={styles.motivationalText}>💬 {motivationalMsg}</Text>
-        </GlassCard>
+          {/* HUGE TriRank Display */}
+          <TriRankDisplay triRank={triRank} />
+        </GradientBackground>
 
-        <TriRankDisplay triRank={triRank} />
-
+        {/* Weekly Progress Section */}
         <View style={styles.weeklyRow}>
           <GlassCard style={styles.consistencyCard}>
             <Text style={styles.consistencyTitle}>Weekly Goal</Text>
@@ -122,10 +157,10 @@ export default function HomeScreen() {
                     styles.ringProgress,
                     {
                       transform: [{ rotate: `${weeklyProgress * 360}deg` }],
-                      borderTopColor: colors.primary,
-                      borderRightColor: weeklyProgress > 0.25 ? colors.primary : "transparent",
-                      borderBottomColor: weeklyProgress > 0.5 ? colors.primary : "transparent",
-                      borderLeftColor: weeklyProgress > 0.75 ? colors.primary : "transparent",
+                      borderTopColor: colors.glowPurple,
+                      borderRightColor: weeklyProgress > 0.25 ? colors.glowPurple : "transparent",
+                      borderBottomColor: weeklyProgress > 0.5 ? colors.glowCyan : "transparent",
+                      borderLeftColor: weeklyProgress > 0.75 ? colors.glowCyan : "transparent",
                     },
                   ]}
                 />
@@ -139,14 +174,14 @@ export default function HomeScreen() {
           <View style={styles.weeklyStatsCol}>
             <StatCard
               icon="flame"
-              iconColor={colors.error}
+              iconColor="#F97316"
               label="Activities"
               value={String(weeklyStats.totalActivities)}
               subtitle="This week"
             />
             <StatCard
               icon="trending-up"
-              iconColor={colors.success}
+              iconColor={colors.glowCyan}
               label="Points"
               value={String(weeklyStats.totalPoints)}
               subtitle="This week"
@@ -155,7 +190,7 @@ export default function HomeScreen() {
         </View>
 
         {nextMilestone && (
-          <GlassCard style={styles.milestonePreview}>
+          <GlassCard style={styles.milestonePreview} variant="highlighted">
             <View style={styles.milestoneRow}>
               <Text style={styles.milestoneEmoji}>{nextMilestone.icon}</Text>
               <View style={styles.milestoneInfo}>
@@ -168,7 +203,7 @@ export default function HomeScreen() {
 
         <GlassCard style={styles.focusCard} accentColor={trainingFocus.color}>
           <View style={styles.focusRow}>
-            <View style={[styles.focusIcon, { backgroundColor: trainingFocus.color + "20" }]}>
+            <View style={[styles.focusIcon, { backgroundColor: trainingFocus.color + "20", borderColor: trainingFocus.color + "40" }]}>
               <Text style={styles.focusEmoji}>
                 {trainingFocus.discipline === "Swim" ? "🏊" : trainingFocus.discipline === "Bike" ? "🚴" : "🏃"}
               </Text>
@@ -253,15 +288,64 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
     paddingBottom: 32,
     gap: 16,
+  },
+  headerGradient: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 16,
+  },
+  levelBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  levelLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  levelBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(139, 92, 246, 0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(139, 92, 246, 0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  levelNumber: {
+    color: colors.glowPurple,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.extrabold,
+  },
+  levelProgress: {
+    flex: 1,
+    gap: 3,
+  },
+  levelTrack: {
+    height: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderRadius: borderRadius.full,
+    overflow: "hidden",
+  },
+  levelFill: {
+    height: "100%",
+    borderRadius: borderRadius.full,
+  },
+  levelXp: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: fontWeight.medium,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
   },
   greeting: {
     color: colors.textSecondary,
@@ -271,7 +355,7 @@ const styles = StyleSheet.create({
   name: {
     color: colors.text,
     fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.extrabold,
     marginTop: 2,
   },
   raceCountdown: {
@@ -286,9 +370,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    backgroundColor: "rgba(244, 63, 94, 0.15)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(244, 63, 94, 0.3)",
   },
   raceEmoji: {
     fontSize: 22,
@@ -305,6 +391,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.sm,
   },
+  racePulse: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#F43F5E",
+    shadowColor: "#F43F5E",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   motivational: {
     paddingVertical: 12,
   },
@@ -318,6 +415,7 @@ const styles = StyleSheet.create({
   weeklyRow: {
     flexDirection: "row",
     gap: 10,
+    paddingHorizontal: spacing.lg,
   },
   consistencyCard: {
     flex: 1,
@@ -369,9 +467,11 @@ const styles = StyleSheet.create({
   weeklyDistRow: {
     flexDirection: "row",
     gap: 10,
+    paddingHorizontal: spacing.lg,
   },
   milestonePreview: {
     paddingVertical: 12,
+    marginHorizontal: spacing.lg,
   },
   milestoneRow: {
     flexDirection: "row",
@@ -396,6 +496,7 @@ const styles = StyleSheet.create({
   },
   focusCard: {
     paddingVertical: 12,
+    marginHorizontal: spacing.lg,
   },
   focusRow: {
     flexDirection: "row",
@@ -408,6 +509,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
   focusEmoji: {
     fontSize: 22,
@@ -427,6 +529,7 @@ const styles = StyleSheet.create({
   },
   disciplineCards: {
     gap: 12,
+    paddingHorizontal: spacing.lg,
   },
   divider: {
     height: 1,
@@ -436,6 +539,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingVertical: 20,
+    marginHorizontal: spacing.lg,
   },
   premiumPromptIcon: {
     fontSize: 24,

@@ -1,10 +1,12 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, fontSize, fontWeight, borderRadius } from "@/theme";
 
 interface ProgressBarProps {
   progress: number;
   color: string;
+  gradientColors?: string[];
   height?: number;
   showPercentage?: boolean;
   label?: string;
@@ -14,12 +16,14 @@ interface ProgressBarProps {
 export function ProgressBar({
   progress,
   color,
+  gradientColors,
   height = 8,
   showPercentage = false,
   label,
   sublabel,
 }: ProgressBarProps) {
   const clampedProgress = Math.min(Math.max(progress, 0), 1);
+  const useGradient = gradientColors && gradientColors.length >= 2;
 
   return (
     <View style={styles.container}>
@@ -37,17 +41,32 @@ export function ProgressBar({
         </View>
       )}
       <View style={[styles.track, { height }]}>
-        <View
-          style={[
-            styles.fill,
-            {
-              width: `${clampedProgress * 100}%`,
-              backgroundColor: color,
-              height,
-              shadowColor: color,
-            },
-          ]}
-        />
+        {useGradient ? (
+          <LinearGradient
+            colors={gradientColors as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[
+              styles.gradientFill,
+              {
+                width: `${Math.max(clampedProgress * 100, 1)}%`,
+                height,
+              },
+            ]}
+          />
+        ) : (
+          <View
+            style={[
+              styles.fill,
+              {
+                width: `${Math.max(clampedProgress * 100, 1)}%`,
+                backgroundColor: color,
+                height,
+                shadowColor: color,
+              },
+            ]}
+          />
+        )}
       </View>
     </View>
   );
@@ -92,5 +111,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 6,
     elevation: 3,
+  },
+  gradientFill: {
+    borderRadius: borderRadius.full,
   },
 });

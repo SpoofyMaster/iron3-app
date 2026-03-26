@@ -22,7 +22,9 @@ export function MilestoneCard({ milestone, compact = false }: MilestoneCardProps
   if (compact) {
     return (
       <View style={[styles.compactContainer, !achieved && styles.locked]}>
-        <Text style={styles.compactIcon}>{milestone.icon}</Text>
+        <View style={[styles.compactIconWrap, achieved && styles.achievedIconWrap]}>
+          <Text style={styles.compactIcon}>{milestone.icon}</Text>
+        </View>
         <View style={styles.compactText}>
           <Text style={[styles.compactTitle, !achieved && styles.lockedText]} numberOfLines={1}>
             {milestone.title}
@@ -41,7 +43,7 @@ export function MilestoneCard({ milestone, compact = false }: MilestoneCardProps
 
   return (
     <View style={[styles.container, !achieved && styles.locked]}>
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, achieved && styles.achievedIconContainer]}>
         <Text style={styles.icon}>{milestone.icon}</Text>
       </View>
       <View style={styles.content}>
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   locked: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   iconContainer: {
     width: 44,
@@ -81,6 +83,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.surfaceGlassBorder,
+  },
+  achievedIconContainer: {
+    backgroundColor: "rgba(139, 92, 246, 0.12)",
+    borderColor: "rgba(139, 92, 246, 0.25)",
   },
   icon: {
     fontSize: 22,
@@ -113,8 +119,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
   },
+  compactIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceGlass,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  achievedIconWrap: {
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+  },
   compactIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   compactText: {
     flex: 1,

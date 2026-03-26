@@ -12,30 +12,33 @@ interface LeaderboardRowProps {
 
 export function LeaderboardRow({ entry, isCurrentUser }: LeaderboardRowProps) {
   const rankColors: Record<number, string> = {
-    1: "#FFD700",
-    2: "#C0C0C0",
-    3: "#CD7F32",
+    1: "#F59E0B",
+    2: "#94A3B8",
+    3: "#D97706",
   };
+
+  const isEven = entry.rank % 2 === 0;
 
   return (
     <View
       style={[
         styles.container,
         isCurrentUser && styles.currentUser,
+        !isCurrentUser && isEven && styles.evenRow,
       ]}
     >
       <View style={styles.rankSection}>
         <Text
           style={[
             styles.rankNumber,
-            entry.rank <= 3 && { color: rankColors[entry.rank] },
+            entry.rank <= 3 && { color: rankColors[entry.rank], fontWeight: fontWeight.extrabold },
           ]}
         >
           {entry.rank}
         </Text>
       </View>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
+      <View style={[styles.avatar, { borderColor: entry.tierColor + "60" }]}>
+        <Text style={[styles.avatarText, { color: entry.tierColor }]}>
           {entry.displayName.charAt(0).toUpperCase()}
         </Text>
       </View>
@@ -60,7 +63,7 @@ export function LeaderboardRow({ entry, isCurrentUser }: LeaderboardRowProps) {
           </Text>
         </View>
       </View>
-      <Text style={styles.points}>{formatPoints(entry.points)}</Text>
+      <Text style={[styles.points, { color: entry.tierColor }]}>{formatPoints(entry.points)}</Text>
     </View>
   );
 }
@@ -75,9 +78,12 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   currentUser: {
-    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    backgroundColor: "rgba(139, 92, 246, 0.12)",
     borderWidth: 1,
-    borderColor: "rgba(99, 102, 241, 0.2)",
+    borderColor: "rgba(139, 92, 246, 0.25)",
+  },
+  evenRow: {
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
   },
   rankSection: {
     width: 28,
@@ -89,17 +95,17 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceLight,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
   },
   avatarText: {
-    color: colors.textSecondary,
     fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
   },
   info: {
     flex: 1,
@@ -117,6 +123,7 @@ const styles = StyleSheet.create({
   },
   currentUserName: {
     color: colors.primaryLight,
+    fontWeight: fontWeight.bold,
   },
   friendBadge: {
     backgroundColor: colors.primary + "20",
@@ -139,8 +146,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   points: {
-    color: colors.text,
     fontSize: fontSize.md,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.extrabold,
   },
 });

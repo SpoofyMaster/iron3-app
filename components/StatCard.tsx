@@ -15,7 +15,7 @@ interface StatCardProps {
 export function StatCard({ icon, iconColor, label, value, subtitle }: StatCardProps) {
   return (
     <GlassCard style={styles.card}>
-      <View style={[styles.iconCircle, { backgroundColor: iconColor + "15" }]}>
+      <View style={[styles.iconCircle, { backgroundColor: iconColor + "18", borderColor: iconColor + "30" }]}>
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
       <Text style={styles.value}>{value}</Text>
@@ -34,17 +34,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
+    borderWidth: 1,
   },
   value: {
     color: colors.text,
     fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.extrabold,
   },
   label: {
     color: colors.textSecondary,
