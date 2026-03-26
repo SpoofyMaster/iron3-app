@@ -14,3 +14,4 @@ export { PremiumBanner } from "./PremiumBanner";
 export { StreakBadge } from "./StreakBadge";
 export { MilestoneCard } from "./MilestoneCard";
 export { PremiumLock } from "./PremiumLock";
+export { GradientBackground } from "./GradientBackground";

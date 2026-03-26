@@ -7,13 +7,15 @@ import {
   StyleProp,
 } from "react-native";
 import { colors, borderRadius } from "@/theme";
+import { getGlowStyle } from "@/lib/effects";
 
 interface GlassCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
-  variant?: "default" | "light" | "accent";
+  variant?: "default" | "light" | "accent" | "highlighted" | "rank";
   accentColor?: string;
+  rankColor?: string;
 }
 
 export function GlassCard({
@@ -22,10 +24,21 @@ export function GlassCard({
   onPress,
   variant = "default",
   accentColor,
+  rankColor,
 }: GlassCardProps) {
-  const cardStyle = [
+  const glowStyles = (variant === "rank" && rankColor)
+    ? getGlowStyle(rankColor, "sm")
+    : undefined;
+
+  const cardStyle: StyleProp<ViewStyle>[] = [
     styles.card,
     variant === "light" && styles.cardLight,
+    variant === "highlighted" && styles.cardHighlighted,
+    variant === "rank" && rankColor && [
+      styles.cardRank,
+      { borderColor: rankColor + "30" },
+      glowStyles,
+    ],
     accentColor && { borderLeftColor: accentColor, borderLeftWidth: 3 },
     style,
   ];
@@ -47,14 +60,21 @@ export function GlassCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surfaceGlass,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.surfaceGlassBorder,
+    borderColor: "rgba(255, 255, 255, 0.08)",
     padding: 16,
     overflow: "hidden",
   },
   cardLight: {
-    backgroundColor: colors.surfaceGlassLight,
+    backgroundColor: "rgba(255, 255, 255, 0.09)",
+  },
+  cardHighlighted: {
+    backgroundColor: "rgba(139, 92, 246, 0.08)",
+    borderColor: "rgba(139, 92, 246, 0.2)",
+  },
+  cardRank: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
 });

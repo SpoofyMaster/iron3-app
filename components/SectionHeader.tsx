@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { colors, fontSize, fontWeight } from "@/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { colors, fontSize, fontWeight, borderRadius } from "@/theme";
 
 interface SectionHeaderProps {
   title: string;
@@ -11,32 +12,48 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      {actionLabel && onAction && (
-        <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-          <Text style={styles.action}>{actionLabel}</Text>
-        </TouchableOpacity>
-      )}
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{title}</Text>
+        {actionLabel && onAction && (
+          <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
+            <Text style={styles.action}>{actionLabel}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <LinearGradient
+        colors={[colors.glowPurple + "60", colors.glowBlue + "30", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.underline}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    paddingHorizontal: 4,
+    marginBottom: 12,
+    gap: 6,
+  },
+  titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 4,
-    marginBottom: 12,
   },
   title: {
     color: colors.text,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
   },
   action: {
     color: colors.primary,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
+  },
+  underline: {
+    height: 2,
+    borderRadius: 1,
   },
 });

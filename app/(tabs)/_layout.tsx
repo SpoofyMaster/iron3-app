@@ -36,12 +36,13 @@ export default function TabLayout() {
           paddingTop: 8,
           elevation: 0,
         },
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.glowPurple,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: fontWeight.medium,
+          fontWeight: fontWeight.semibold,
           marginTop: 2,
+          letterSpacing: 0.5,
         },
       }}
     >
@@ -52,15 +53,17 @@ export default function TabLayout() {
           options={{
             title: tab.title,
             tabBarIcon: ({ focused, size }) => (
-              <Ionicons
-                name={focused ? tab.iconFocused : tab.icon}
-                size={22}
-                color={
-                  focused ? (tab.color ?? colors.primary) : colors.textMuted
-                }
-              />
+              <View style={focused ? styles.activeIconWrap : undefined}>
+                <Ionicons
+                  name={focused ? tab.iconFocused : tab.icon}
+                  size={22}
+                  color={
+                    focused ? (tab.color ?? colors.glowPurple) : colors.textMuted
+                  }
+                />
+              </View>
             ),
-            tabBarActiveTintColor: tab.color ?? colors.primary,
+            tabBarActiveTintColor: tab.color ?? colors.glowPurple,
           }}
         />
       ))}
@@ -76,3 +79,13 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  activeIconWrap: {
+    shadowColor: colors.glowPurple,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+});

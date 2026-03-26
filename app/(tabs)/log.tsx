@@ -10,9 +10,10 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppStore } from "@/store/useAppStore";
-import { GlassCard, SectionHeader, ActivityRow } from "@/components";
+import { GlassCard, SectionHeader, ActivityRow, GradientBackground } from "@/components";
 import {
   WorkoutDiscipline,
   WorkoutType,
@@ -111,17 +112,20 @@ export default function LogScreen() {
 
   const confirmAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const ringAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (showConfirmation) {
       Animated.parallel([
         Animated.spring(confirmAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
         Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 6 }),
+        Animated.timing(ringAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       ]).start();
       const timer = setTimeout(() => {
         Animated.timing(confirmAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
           dismissConfirmation();
           scaleAnim.setValue(0.5);
+          ringAnim.setValue(0);
         });
       }, 2500);
       return () => clearTimeout(timer);
@@ -193,7 +197,7 @@ export default function LogScreen() {
             return (
               <GlassCard key={log.id} style={styles.historyCard} accentColor={dC.main}>
                 <View style={styles.historyRow}>
-                  <View style={[styles.historyIcon, { backgroundColor: dC.main + "20" }]}>
+                  <View style={[styles.historyIcon, { backgroundColor: dC.main + "20", borderColor: dC.main + "40" }]}>
                     <Ionicons
                       name={DISCIPLINES.find((d) => d.key === log.discipline)?.icon ?? "fitness"}
                       size={20}
@@ -233,232 +237,268 @@ export default function LogScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Log Workout</Text>
-          <TouchableOpacity onPress={() => setShowHistory(true)} activeOpacity={0.7}>
-            <Ionicons name="time-outline" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.disciplineRow}
-        >
-          {DISCIPLINES.map((d) => {
-            const active = discipline === d.key;
-            const dc = workoutDisciplineColors[d.key];
-            return (
-              <TouchableOpacity
-                key={d.key}
-                style={[
-                  styles.disciplineBtn,
-                  active && { backgroundColor: dc.main + "20", borderColor: dc.main + "50" },
-                ]}
-                onPress={() => handleDisciplineChange(d.key)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={d.icon}
-                  size={20}
-                  color={active ? dc.main : colors.textMuted}
-                />
-                <Text style={[styles.disciplineLabel, active && { color: dc.main }]}>
-                  {d.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        <SectionHeader title="Duration" />
-        <View style={styles.presetRow}>
-          {DURATION_PRESETS.map((mins) => (
-            <TouchableOpacity
-              key={mins}
-              style={[
-                styles.presetChip,
-                duration === mins && !customDuration && {
-                  backgroundColor: dColors.main + "20",
-                  borderColor: dColors.main + "50",
-                },
-              ]}
-              onPress={() => { setDuration(mins); setCustomDuration(""); }}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.presetText,
-                  duration === mins && !customDuration && { color: dColors.main },
-                ]}
-              >
-                {mins}m
-              </Text>
+        <GradientBackground style={styles.topGradient} variant="blue">
+          <View style={styles.header}>
+            <Text style={styles.title}>Log Workout</Text>
+            <TouchableOpacity onPress={() => setShowHistory(true)} activeOpacity={0.7}>
+              <Ionicons name="time-outline" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
-          ))}
-          <TextInput
-            style={styles.customInput}
-            placeholder="Custom"
-            placeholderTextColor={colors.textMuted}
-            keyboardType="number-pad"
-            value={customDuration}
-            onChangeText={setCustomDuration}
-            maxLength={3}
-          />
-        </View>
+          </View>
 
-        {distConfig && (
-          <>
-            <SectionHeader title={distConfig.label} />
-            <View style={styles.presetRow}>
-              {distConfig.presets.map((val) => (
+          {/* Discipline Selector with neon glow */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.disciplineRow}
+          >
+            {DISCIPLINES.map((d) => {
+              const active = discipline === d.key;
+              const dc = workoutDisciplineColors[d.key];
+              return (
                 <TouchableOpacity
-                  key={val}
+                  key={d.key}
                   style={[
-                    styles.presetChip,
-                    distance === val && !customDistance && {
-                      backgroundColor: dColors.main + "20",
-                      borderColor: dColors.main + "50",
+                    styles.disciplineBtn,
+                    active && {
+                      backgroundColor: dc.main + "18",
+                      borderColor: dc.main,
+                      shadowColor: dc.main,
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.5,
+                      shadowRadius: 10,
+                      elevation: 5,
                     },
                   ]}
-                  onPress={() => { setDistance(val); setCustomDistance(""); }}
+                  onPress={() => handleDisciplineChange(d.key)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={d.icon}
+                    size={22}
+                    color={active ? dc.main : colors.textMuted}
+                  />
+                  <Text style={[styles.disciplineLabel, active && { color: dc.main, fontWeight: fontWeight.bold }]}>
+                    {d.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </GradientBackground>
+
+        <View style={styles.formBody}>
+          <SectionHeader title="Duration" />
+          <View style={styles.presetRow}>
+            {DURATION_PRESETS.map((mins) => {
+              const active = duration === mins && !customDuration;
+              return (
+                <TouchableOpacity
+                  key={mins}
+                  style={[
+                    styles.presetChip,
+                    active && {
+                      backgroundColor: dColors.main + "20",
+                      borderColor: dColors.main,
+                    },
+                  ]}
+                  onPress={() => { setDuration(mins); setCustomDuration(""); }}
                   activeOpacity={0.7}
                 >
                   <Text
                     style={[
                       styles.presetText,
-                      distance === val && !customDistance && { color: dColors.main },
+                      active && { color: dColors.main, fontWeight: fontWeight.bold },
                     ]}
                   >
-                    {val}{distConfig.unit === "m" && val >= 1000 ? "" : ""}{distConfig.unit}
+                    {mins}m
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TextInput
+              style={styles.customInput}
+              placeholder="Custom"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+              value={customDuration}
+              onChangeText={setCustomDuration}
+              maxLength={3}
+            />
+          </View>
+
+          {distConfig && (
+            <>
+              <SectionHeader title={distConfig.label} />
+              <View style={styles.presetRow}>
+                {distConfig.presets.map((val) => {
+                  const active = distance === val && !customDistance;
+                  return (
+                    <TouchableOpacity
+                      key={val}
+                      style={[
+                        styles.presetChip,
+                        active && {
+                          backgroundColor: dColors.main + "20",
+                          borderColor: dColors.main,
+                        },
+                      ]}
+                      onPress={() => { setDistance(val); setCustomDistance(""); }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.presetText,
+                          active && { color: dColors.main, fontWeight: fontWeight.bold },
+                        ]}
+                      >
+                        {val}{distConfig.unit}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TextInput
+                  style={styles.customInput}
+                  placeholder="Custom"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
+                  value={customDistance}
+                  onChangeText={setCustomDistance}
+                  maxLength={5}
+                />
+              </View>
+            </>
+          )}
+
+          <SectionHeader title={`Effort: ${effort}/10`} />
+          <View style={styles.effortContainer}>
+            <View style={styles.effortTrack}>
+              <LinearGradient
+                colors={["#22C55E", "#84CC16", "#EAB308", "#F97316", "#EF4444"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.effortFill, { width: `${effort * 10}%` }]}
+              />
+            </View>
+            <View style={styles.effortRow}>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((e) => (
+                <TouchableOpacity
+                  key={e}
+                  style={[
+                    styles.effortDot,
+                    {
+                      backgroundColor: e <= effort ? EFFORT_COLORS[e - 1] + "25" : colors.surfaceGlass,
+                      borderColor: e <= effort ? EFFORT_COLORS[e - 1] + "60" : colors.surfaceGlassBorder,
+                    },
+                  ]}
+                  onPress={() => setEffort(e)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.effortNum,
+                      e <= effort && { color: EFFORT_COLORS[e - 1] },
+                    ]}
+                  >
+                    {e}
                   </Text>
                 </TouchableOpacity>
               ))}
-              <TextInput
-                style={styles.customInput}
-                placeholder="Custom"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="decimal-pad"
-                value={customDistance}
-                onChangeText={setCustomDistance}
-                maxLength={5}
-              />
             </View>
-          </>
-        )}
-
-        <SectionHeader title={`Effort: ${effort}/10`} />
-        <View style={styles.effortContainer}>
-          <View style={styles.effortRow}>
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((e) => (
-              <TouchableOpacity
-                key={e}
-                style={[
-                  styles.effortDot,
-                  {
-                    backgroundColor: e <= effort ? EFFORT_COLORS[e - 1] + "30" : colors.surfaceGlass,
-                    borderColor: e <= effort ? EFFORT_COLORS[e - 1] : colors.surfaceGlassBorder,
-                  },
-                ]}
-                onPress={() => setEffort(e)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.effortNum,
-                    e <= effort && { color: EFFORT_COLORS[e - 1] },
-                  ]}
-                >
-                  {e}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={[styles.effortLabel, { color: EFFORT_COLORS[effort - 1] }]}>
+              {EFFORT_LABELS[effort - 1]}
+            </Text>
           </View>
-          <Text style={[styles.effortLabel, { color: EFFORT_COLORS[effort - 1] }]}>
-            {EFFORT_LABELS[effort - 1]}
-          </Text>
-        </View>
 
-        <SectionHeader title="Workout Type" />
-        <View style={styles.typeGrid}>
-          {WORKOUT_TYPES[discipline].map((wt) => {
-            const active = workoutType === wt.key;
-            return (
-              <TouchableOpacity
-                key={wt.key}
-                style={[
-                  styles.typeChip,
-                  active && { backgroundColor: dColors.main + "20", borderColor: dColors.main + "50" },
-                ]}
-                onPress={() => setWorkoutType(wt.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.typeText, active && { color: dColors.main }]}>
-                  {wt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+          <SectionHeader title="Workout Type" />
+          <View style={styles.typeGrid}>
+            {WORKOUT_TYPES[discipline].map((wt) => {
+              const active = workoutType === wt.key;
+              return (
+                <TouchableOpacity
+                  key={wt.key}
+                  style={[
+                    styles.typeChip,
+                    active && { backgroundColor: dColors.main + "20", borderColor: dColors.main },
+                  ]}
+                  onPress={() => setWorkoutType(wt.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.typeText, active && { color: dColors.main, fontWeight: fontWeight.bold }]}>
+                    {wt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-        {hasIndoorOutdoor && (
-          <>
-            <SectionHeader title="Location" />
-            <View style={styles.toggleRow}>
-              {(["indoor", "outdoor"] as IndoorOutdoor[]).map((opt) => {
-                const active = indoorOutdoor === opt;
-                return (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[
-                      styles.toggleBtn,
-                      active && { backgroundColor: dColors.main + "20", borderColor: dColors.main + "50" },
-                    ]}
-                    onPress={() => setIndoorOutdoor(opt)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={opt === "indoor" ? "home-outline" : "sunny-outline"}
-                      size={18}
-                      color={active ? dColors.main : colors.textMuted}
-                    />
-                    <Text style={[styles.toggleText, active && { color: dColors.main }]}>
-                      {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </>
-        )}
+          {hasIndoorOutdoor && (
+            <>
+              <SectionHeader title="Location" />
+              <View style={styles.toggleRow}>
+                {(["indoor", "outdoor"] as IndoorOutdoor[]).map((opt) => {
+                  const active = indoorOutdoor === opt;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.toggleBtn,
+                        active && { backgroundColor: dColors.main + "18", borderColor: dColors.main },
+                      ]}
+                      onPress={() => setIndoorOutdoor(opt)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={opt === "indoor" ? "home-outline" : "sunny-outline"}
+                        size={18}
+                        color={active ? dColors.main : colors.textMuted}
+                      />
+                      <Text style={[styles.toggleText, active && { color: dColors.main }]}>
+                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
 
-        {!showNotes ? (
-          <TouchableOpacity style={styles.notesToggle} onPress={() => setShowNotes(true)} activeOpacity={0.7}>
-            <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
-            <Text style={styles.notesToggleText}>Add Notes</Text>
+          {!showNotes ? (
+            <TouchableOpacity style={styles.notesToggle} onPress={() => setShowNotes(true)} activeOpacity={0.7}>
+              <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+              <Text style={styles.notesToggleText}>Add Notes</Text>
+            </TouchableOpacity>
+          ) : (
+            <TextInput
+              style={styles.notesInput}
+              placeholder="How did it feel? Any observations..."
+              placeholderTextColor={colors.textMuted}
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              maxLength={500}
+            />
+          )}
+
+          {/* Dramatic LOG WORKOUT button with gradient */}
+          <TouchableOpacity
+            onPress={handleLog}
+            activeOpacity={0.8}
+            style={styles.logButtonWrapper}
+          >
+            <LinearGradient
+              colors={[colors.glowPurple, colors.glowBlue]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.logButton}
+            >
+              <Ionicons name="checkmark-circle" size={26} color="#fff" />
+              <Text style={styles.logButtonText}>LOG WORKOUT</Text>
+            </LinearGradient>
           </TouchableOpacity>
-        ) : (
-          <TextInput
-            style={styles.notesInput}
-            placeholder="How did it feel? Any observations..."
-            placeholderTextColor={colors.textMuted}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            maxLength={500}
-          />
-        )}
-
-        <TouchableOpacity
-          style={[styles.logButton, { backgroundColor: dColors.main }]}
-          onPress={handleLog}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="checkmark-circle" size={24} color="#fff" />
-          <Text style={styles.logButtonText}>LOG WORKOUT</Text>
-        </TouchableOpacity>
+        </View>
       </ScrollView>
 
+      {/* Success Confirmation Overlay */}
       {showConfirmation && (
         <Animated.View
           style={[
@@ -467,11 +507,22 @@ export default function LogScreen() {
           ]}
         >
           <Animated.View style={[styles.confirmCard, { transform: [{ scale: scaleAnim }] }]}>
-            <Text style={styles.confirmEmoji}>🎉</Text>
+            <Animated.View
+              style={[
+                styles.confirmRing,
+                {
+                  transform: [{ scale: ringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1.5] }) }],
+                  opacity: ringAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.8, 0.4, 0] }),
+                },
+              ]}
+            />
+            <View style={styles.confirmCheck}>
+              <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+            </View>
             <Text style={styles.confirmTitle}>Workout Logged!</Text>
             <View style={styles.confirmPointsRow}>
               <Text style={styles.confirmPoints}>+{lastPoints}</Text>
-              <Text style={styles.confirmPtsLabel}>points earned</Text>
+              <Text style={styles.confirmPtsLabel}>XP earned</Text>
             </View>
             <Text style={styles.confirmSub}>Keep up the momentum!</Text>
           </Animated.View>
@@ -490,8 +541,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
     paddingBottom: 40,
+  },
+  topGradient: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  formBody: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: 16,
     gap: 16,
   },
   header: {
@@ -504,6 +564,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.xxxl,
     fontWeight: fontWeight.extrabold,
+    letterSpacing: 1,
   },
   disciplineRow: {
     gap: 8,
@@ -511,14 +572,14 @@ const styles = StyleSheet.create({
   },
   disciplineBtn: {
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
-    minWidth: 72,
+    minWidth: 76,
   },
   disciplineLabel: {
     color: colors.textMuted,
@@ -531,10 +592,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   presetChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
   },
@@ -545,9 +606,9 @@ const styles = StyleSheet.create({
   },
   customInput: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+    paddingVertical: 12,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
     color: colors.text,
@@ -555,7 +616,17 @@ const styles = StyleSheet.create({
     minWidth: 70,
   },
   effortContainer: {
-    gap: 8,
+    gap: 10,
+  },
+  effortTrack: {
+    height: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderRadius: borderRadius.full,
+    overflow: "hidden",
+  },
+  effortFill: {
+    height: "100%",
+    borderRadius: borderRadius.full,
   },
   effortRow: {
     flexDirection: "row",
@@ -577,8 +648,10 @@ const styles = StyleSheet.create({
   },
   effortLabel: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
     textAlign: "center",
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
   typeGrid: {
     flexDirection: "row",
@@ -586,10 +659,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
   },
@@ -608,9 +681,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
   },
@@ -632,7 +705,7 @@ const styles = StyleSheet.create({
   },
   notesInput: {
     borderRadius: borderRadius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
     color: colors.text,
@@ -641,45 +714,69 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
   },
+  logButtonWrapper: {
+    marginTop: 8,
+    borderRadius: borderRadius.lg,
+    overflow: "hidden",
+    shadowColor: colors.glowPurple,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   logButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 18,
+    paddingVertical: 20,
     borderRadius: borderRadius.lg,
-    marginTop: 8,
   },
   logButtonText: {
     color: "#fff",
     fontSize: fontSize.lg,
     fontWeight: fontWeight.extrabold,
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   confirmOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "rgba(8, 8, 16, 0.85)",
     zIndex: 100,
   },
   confirmCard: {
     alignItems: "center",
-    gap: 12,
-    padding: 32,
+    gap: 14,
+    padding: 36,
     borderRadius: borderRadius.xxl,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.surfaceGlassBorder,
-    width: SCREEN_WIDTH * 0.75,
+    borderColor: "rgba(139, 92, 246, 0.3)",
+    width: SCREEN_WIDTH * 0.78,
+    shadowColor: colors.glowPurple,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 10,
   },
-  confirmEmoji: {
-    fontSize: 48,
+  confirmRing: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: colors.success,
+    top: "25%",
+  },
+  confirmCheck: {
+    marginBottom: 4,
   },
   confirmTitle: {
     color: colors.text,
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.extrabold,
+    letterSpacing: 1,
   },
   confirmPointsRow: {
     alignItems: "center",
@@ -689,10 +786,16 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontSize: fontSize.display,
     fontWeight: fontWeight.extrabold,
+    textShadowColor: colors.success,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   confirmPtsLabel: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
   confirmSub: {
     color: colors.textMuted,
@@ -733,6 +836,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
   historyInfo: {
     flex: 1,

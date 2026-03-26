@@ -19,7 +19,15 @@ export function FilterChip({
     <TouchableOpacity
       style={[
         styles.chip,
-        isActive && { backgroundColor: activeColor + "20", borderColor: activeColor + "40" },
+        isActive && {
+          backgroundColor: activeColor + "18",
+          borderColor: activeColor,
+          shadowColor: activeColor,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+          elevation: 3,
+        },
       ]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -27,7 +35,7 @@ export function FilterChip({
       <Text
         style={[
           styles.label,
-          isActive && { color: activeColor },
+          isActive && { color: activeColor, fontWeight: fontWeight.bold },
         ]}
       >
         {label}
@@ -38,10 +46,10 @@ export function FilterChip({
 
 const styles = StyleSheet.create({
   chip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
   },

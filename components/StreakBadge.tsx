@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors, fontSize, fontWeight, borderRadius } from "@/theme";
+import { getGlowStyle } from "@/lib/effects";
 
 interface StreakBadgeProps {
   streak: number;
@@ -9,8 +10,14 @@ interface StreakBadgeProps {
 
 export function StreakBadge({ streak, size = "md" }: StreakBadgeProps) {
   const cfg = sizeMap[size];
+  const glowStyle = streak >= 7
+    ? getGlowStyle("#F97316", "md")
+    : streak >= 3
+    ? getGlowStyle("#F97316", "sm")
+    : {};
+
   return (
-    <View style={[styles.container, { paddingHorizontal: cfg.px, paddingVertical: cfg.py }]}>
+    <View style={[styles.container, { paddingHorizontal: cfg.px, paddingVertical: cfg.py }, glowStyle]}>
       <Text style={[styles.fire, { fontSize: cfg.emoji }]}>🔥</Text>
       <Text style={[styles.count, { fontSize: cfg.font }]}>{streak}</Text>
     </View>
@@ -28,14 +35,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(239, 68, 68, 0.12)",
+    backgroundColor: "rgba(249, 115, 22, 0.15)",
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.25)",
+    borderColor: "rgba(249, 115, 22, 0.35)",
   },
   fire: {},
   count: {
-    color: colors.error,
-    fontWeight: fontWeight.bold,
+    color: "#FB923C",
+    fontWeight: fontWeight.extrabold,
   },
 });

@@ -1,18 +1,26 @@
 export const colors = {
-  background: "#0A0A0F",
-  surface: "#12121A",
-  surfaceLight: "#1A1A25",
-  surfaceGlass: "rgba(255, 255, 255, 0.05)",
-  surfaceGlassLight: "rgba(255, 255, 255, 0.08)",
+  background: "#080810",
+  surface: "#0E0E1A",
+  surfaceLight: "#161625",
+  surfaceGlass: "rgba(255, 255, 255, 0.06)",
+  surfaceGlassLight: "rgba(255, 255, 255, 0.09)",
   surfaceGlassBorder: "rgba(255, 255, 255, 0.1)",
 
   text: "#FFFFFF",
-  textSecondary: "#A0A0B0",
-  textMuted: "#606070",
+  textSecondary: "#A0A0B8",
+  textMuted: "#606078",
 
-  primary: "#6366F1",
-  primaryLight: "#818CF8",
-  primaryDark: "#4F46E5",
+  primary: "#8B5CF6",
+  primaryLight: "#A78BFA",
+  primaryDark: "#7C3AED",
+
+  gradientStart: "#1a0533",
+  gradientMid: "#0d1b3e",
+  gradientEnd: "#071428",
+
+  glowPurple: "#8B5CF6",
+  glowCyan: "#06B6D4",
+  glowBlue: "#3B82F6",
 
   swim: "#06B6D4",
   swimLight: "#22D3EE",
@@ -38,22 +46,33 @@ export const colors = {
   strengthDark: "#9333EA",
 
   rank: {
-    Iron: "#8B8B8B",
-    Bronze: "#CD7F32",
-    Silver: "#C0C0C0",
-    Gold: "#FFD700",
-    Platinum: "#B0C4DE",
-    Diamond: "#B9F2FF",
-    Elite: "#E5E4E2",
-    Legendary: "#FF4500",
+    Iron: "#9CA3AF",
+    Bronze: "#D97706",
+    Silver: "#94A3B8",
+    Gold: "#F59E0B",
+    Platinum: "#818CF8",
+    Diamond: "#22D3EE",
+    Elite: "#A78BFA",
+    Legendary: "#F43F5E",
+  },
+
+  rankGlow: {
+    Iron: "rgba(156, 163, 175, 0.4)",
+    Bronze: "rgba(217, 119, 6, 0.4)",
+    Silver: "rgba(148, 163, 184, 0.4)",
+    Gold: "rgba(245, 158, 11, 0.5)",
+    Platinum: "rgba(129, 140, 248, 0.5)",
+    Diamond: "rgba(34, 211, 238, 0.5)",
+    Elite: "rgba(167, 139, 250, 0.5)",
+    Legendary: "rgba(244, 63, 94, 0.6)",
   },
 
   error: "#EF4444",
   success: "#10B981",
   warning: "#F59E0B",
 
-  tabBar: "#0D0D14",
-  tabBarBorder: "rgba(255, 255, 255, 0.06)",
+  tabBar: "#06060C",
+  tabBarBorder: "rgba(139, 92, 246, 0.15)",
 } as const;
 
 export const spacing = {
