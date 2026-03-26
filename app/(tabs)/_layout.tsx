@@ -14,12 +14,13 @@ const TAB_CONFIG: {
   color?: string;
 }[] = [
   { name: "index", title: "Home", icon: "home-outline", iconFocused: "home" },
-  { name: "swim", title: "Swim", icon: "water-outline", iconFocused: "water", color: colors.swim },
-  { name: "bike", title: "Bike", icon: "bicycle-outline", iconFocused: "bicycle", color: colors.bike },
-  { name: "run", title: "Run", icon: "walk-outline", iconFocused: "walk", color: colors.run },
-  { name: "leaderboard", title: "Ranks", icon: "podium-outline", iconFocused: "podium" },
+  { name: "log", title: "Log", icon: "add-circle-outline", iconFocused: "add-circle" },
+  { name: "ranks", title: "Ranks", icon: "trophy-outline", iconFocused: "trophy" },
+  { name: "progress", title: "Progress", icon: "stats-chart-outline", iconFocused: "stats-chart" },
   { name: "profile", title: "Profile", icon: "person-outline", iconFocused: "person" },
 ];
+
+const HIDDEN_SCREENS = ["swim", "bike", "run", "leaderboard"];
 
 export default function TabLayout() {
   return (
@@ -60,6 +61,15 @@ export default function TabLayout() {
               />
             ),
             tabBarActiveTintColor: tab.color ?? colors.primary,
+          }}
+        />
+      ))}
+      {HIDDEN_SCREENS.map((name) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{
+            href: null,
           }}
         />
       ))}

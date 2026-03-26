@@ -29,11 +29,21 @@ export const colors = {
   runDark: "#059669",
   runGradient: ["#10B981", "#059669"] as const,
 
+  brick: "#F97316",
+  brickLight: "#FB923C",
+  brickDark: "#EA580C",
+
+  strength: "#A855F7",
+  strengthLight: "#C084FC",
+  strengthDark: "#9333EA",
+
   rank: {
     Iron: "#8B8B8B",
     Bronze: "#CD7F32",
     Silver: "#C0C0C0",
     Gold: "#FFD700",
+    Platinum: "#B0C4DE",
+    Diamond: "#B9F2FF",
     Elite: "#E5E4E2",
     Legendary: "#FF4500",
   },
@@ -88,6 +98,14 @@ export const disciplineColors = {
   swim: { main: colors.swim, light: colors.swimLight, dark: colors.swimDark },
   bike: { main: colors.bike, light: colors.bikeLight, dark: colors.bikeDark },
   run: { main: colors.run, light: colors.runLight, dark: colors.runDark },
+} as const;
+
+export const workoutDisciplineColors: Record<string, { main: string; light: string; dark: string }> = {
+  swim: { main: colors.swim, light: colors.swimLight, dark: colors.swimDark },
+  bike: { main: colors.bike, light: colors.bikeLight, dark: colors.bikeDark },
+  run: { main: colors.run, light: colors.runLight, dark: colors.runDark },
+  brick: { main: colors.brick, light: colors.brickLight, dark: colors.brickDark },
+  strength: { main: colors.strength, light: colors.strengthLight, dark: colors.strengthDark },
 } as const;
 
 export const disciplineIcons = {

@@ -22,6 +22,8 @@ const tierSymbols: Record<RankTier, string> = {
   Bronze: "Br",
   Silver: "Ag",
   Gold: "Au",
+  Platinum: "Pt",
+  Diamond: "Di",
   Elite: "★",
   Legendary: "◆",
 };
