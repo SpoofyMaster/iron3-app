@@ -15,3 +15,4 @@ export { StreakBadge } from "./StreakBadge";
 export { MilestoneCard } from "./MilestoneCard";
 export { PremiumLock } from "./PremiumLock";
 export { GradientBackground } from "./GradientBackground";
+export { LevelStreakBar } from "./LevelStreakBar";

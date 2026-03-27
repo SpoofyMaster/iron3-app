@@ -12,8 +12,9 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
-import { GlassCard, SectionHeader, ActivityRow, GradientBackground } from "@/components";
+import { GlassCard, SectionHeader, ActivityRow, GradientBackground, LevelStreakBar } from "@/components";
 import {
   WorkoutDiscipline,
   WorkoutType,
@@ -92,6 +93,7 @@ const EFFORT_LABELS = [
 ];
 
 export default function LogScreen() {
+  const router = useRouter();
   const [discipline, setDiscipline] = useState<WorkoutDiscipline>("swim");
   const [duration, setDuration] = useState(30);
   const [customDuration, setCustomDuration] = useState("");
@@ -479,6 +481,23 @@ export default function LogScreen() {
             />
           )}
 
+          {/* Start Live Workout button */}
+          <TouchableOpacity
+            onPress={() => router.push("/workout/live")}
+            activeOpacity={0.8}
+            style={styles.startWorkoutWrapper}
+          >
+            <LinearGradient
+              colors={[colors.glowCyan, colors.glowBlue]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.startWorkoutButton}
+            >
+              <Ionicons name="navigate" size={22} color="#fff" />
+              <Text style={styles.startWorkoutText}>START WORKOUT</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
           {/* Dramatic LOG WORKOUT button with gradient */}
           <TouchableOpacity
             onPress={handleLog}
@@ -713,6 +732,29 @@ const styles = StyleSheet.create({
     padding: 14,
     minHeight: 80,
     textAlignVertical: "top",
+  },
+  startWorkoutWrapper: {
+    borderRadius: borderRadius.lg,
+    overflow: "hidden",
+    shadowColor: colors.glowCyan,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  startWorkoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: borderRadius.lg,
+  },
+  startWorkoutText: {
+    color: "#fff",
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.extrabold,
+    letterSpacing: 2,
   },
   logButtonWrapper: {
     marginTop: 8,

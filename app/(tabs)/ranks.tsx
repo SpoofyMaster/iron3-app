@@ -5,8 +5,10 @@ import {
   ScrollView,
   StyleSheet,
   SafeAreaView,
+  TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -19,8 +21,9 @@ import {
   RankBadge,
   PremiumLock,
   GradientBackground,
+  LevelStreakBar,
 } from "@/components";
-import { LeaderboardFilter, LeaderboardScope } from "@/types";
+import { LeaderboardFilter, LeaderboardScope, LeaderboardTab } from "@/types";
 import { getTriRank, getRankForPoints, formatPoints } from "@/lib/ranks";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { getGlowStyle, getRankGradient } from "@/lib/effects";
@@ -32,9 +35,10 @@ const FILTER_OPTIONS: { key: LeaderboardFilter; label: string; color?: string }[
   { key: "run", label: "Run", color: colors.run },
 ];
 
-const SCOPE_OPTIONS: { key: LeaderboardScope; label: string }[] = [
-  { key: "global", label: "Global" },
-  { key: "friends", label: "Friends" },
+const TAB_OPTIONS: { key: LeaderboardTab; label: string }[] = [
+  { key: "friends", label: "FRIENDS" },
+  { key: "global", label: "GLOBAL" },
+  { key: "local", label: "LOCAL" },
 ];
 
 export default function RanksScreen() {
@@ -45,193 +49,147 @@ export default function RanksScreen() {
   const triRank = useMemo(() => getTriRank(swimPoints, bikePoints, runPoints), [swimPoints, bikePoints, runPoints]);
   const isPremium = useAppStore((s) => s.user.isPremium);
 
-  const leaderboard = useAppStore((s) => s.leaderboard);
+  const friendsLeaderboard = useAppStore((s) => s.friendsLeaderboard);
+  const leaderboardTab = useAppStore((s) => s.friendsLeaderboardTab);
+  const setLeaderboardTab = useAppStore((s) => s.setFriendsLeaderboardTab);
+
   const [lbFilter, setLbFilter] = useState<LeaderboardFilter>("overall");
-  const [lbScope, setLbScope] = useState<LeaderboardScope>("global");
 
   const rankInfo = useMemo(() => getRankForPoints(triRank.overallPoints), [triRank.overallPoints]);
 
-  const filteredLeaderboard = useMemo(() => {
-    if (lbScope === "friends") {
-      return leaderboard.filter((e) => e.isFriend || e.userId === "user-001");
-    }
-    return leaderboard;
-  }, [leaderboard, lbScope]);
+  const topThree = friendsLeaderboard.slice(0, 3);
+  const rest = isPremium ? friendsLeaderboard.slice(3) : friendsLeaderboard.slice(3, 6);
 
-  const topThree = filteredLeaderboard.slice(0, 3);
-  const rest = isPremium ? filteredLeaderboard.slice(3) : filteredLeaderboard.slice(3, 5);
+  const PODIUM_CONFIG = [
+    { idx: 1, size: 44, ringColor: "#94A3B8", label: "silver", glowOpacity: 0.4 },
+    { idx: 0, size: 56, ringColor: "#F59E0B", label: "gold", glowOpacity: 0.6 },
+    { idx: 2, size: 44, ringColor: "#D97706", label: "bronze", glowOpacity: 0.4 },
+  ];
 
   return (
     <SafeAreaView style={styles.safe}>
+      <LevelStreakBar />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Dramatic header with gradient */}
-        <GradientBackground style={styles.headerGradient}>
-          <View style={styles.header}>
-            <Text style={styles.title}>RANKS</Text>
-            <Text style={styles.subtitle}>Your triathlon ranking</Text>
-          </View>
-
-          {/* HUGE rank emblem */}
-          <TriRankDisplay triRank={triRank} size="full" />
-
-          {/* Rank Standings */}
-          <View style={styles.standingsRow}>
-            <GlassCard style={styles.standingCard} variant="highlighted">
-              <Text style={styles.standingLabel}>GLOBAL</Text>
-              <Text style={styles.standingValue}>#1,234</Text>
-              <Text style={styles.standingPct}>Top 15%</Text>
-            </GlassCard>
-            <GlassCard style={styles.standingCard} variant="highlighted">
-              <Text style={styles.standingLabel}>REGIONAL</Text>
-              <Text style={styles.standingValue}>#89</Text>
-              <Text style={styles.standingPct}>Top 8%</Text>
-            </GlassCard>
-          </View>
-        </GradientBackground>
-
-        <View style={styles.body}>
-          <SectionHeader title="Discipline Ranks" />
-          <PremiumLock isLocked={!isPremium} message="Unlock Discipline Ranks">
-            <View style={styles.disciplineCards}>
-              <DisciplineCard
-                rank={triRank.swimRank}
-                onPress={() => router.push("/(tabs)/swim")}
-              />
-              <DisciplineCard
-                rank={triRank.bikeRank}
-                onPress={() => router.push("/(tabs)/bike")}
-              />
-              <DisciplineCard
-                rank={triRank.runRank}
-                onPress={() => router.push("/(tabs)/run")}
-              />
-            </View>
-          </PremiumLock>
-
-          <SectionHeader title="Leaderboard" />
-          <View style={styles.scopeRow}>
-            {SCOPE_OPTIONS.map((opt) => (
-              <FilterChip
-                key={opt.key}
-                label={opt.label}
-                isActive={lbScope === opt.key}
-                onPress={() => setLbScope(opt.key)}
-              />
-            ))}
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-          >
-            {FILTER_OPTIONS.map((opt) => (
-              <FilterChip
-                key={opt.key}
-                label={opt.label}
-                isActive={lbFilter === opt.key}
-                onPress={() => setLbFilter(opt.key)}
-                activeColor={opt.color ?? colors.primary}
-              />
-            ))}
-          </ScrollView>
-
-          {/* Podium-style top 3 */}
-          {topThree.length >= 3 && (
-            <View style={styles.podium}>
-              {/* 2nd place - left */}
-              <View style={[styles.podiumSpot, styles.podiumSide]}>
-                <View style={[styles.podiumAvatar, styles.podiumAvatarSilver]}>
-                  <Text style={[styles.podiumAvatarText, { color: "#94A3B8" }]}>
-                    {topThree[1].displayName.charAt(0)}
-                  </Text>
-                </View>
-                <RankBadge
-                  tier={topThree[1].tier}
-                  tierColor={topThree[1].tierColor}
-                  size="sm"
-                />
-                <View style={[styles.podiumBar, styles.podiumSecond]}>
-                  <Text style={styles.podiumRank}>2</Text>
-                </View>
-                <Text style={styles.podiumName} numberOfLines={1}>
-                  {topThree[1].displayName.split(" ")[0]}
+        {/* Tab Toggle */}
+        <View style={styles.tabToggle}>
+          {TAB_OPTIONS.map((tab) => {
+            const active = leaderboardTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tabBtn, active && styles.tabBtnActive]}
+                onPress={() => setLeaderboardTab(tab.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tabBtnText, active && styles.tabBtnTextActive]}>
+                  {tab.label}
                 </Text>
-                <Text style={styles.podiumPoints}>{topThree[1].points.toLocaleString()}</Text>
-              </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-              {/* 1st place - center */}
-              <View style={[styles.podiumSpot, styles.podiumCenter]}>
-                <Text style={styles.crown}>👑</Text>
-                <View style={[styles.podiumAvatar, styles.podiumAvatarGold]}>
-                  <Text style={[styles.podiumAvatarText, { color: "#F59E0B" }]}>
-                    {topThree[0].displayName.charAt(0)}
+        {/* Distance filter */}
+        <View style={styles.distFilterRow}>
+          <Text style={styles.distFilter}>10 KM</Text>
+          <TouchableOpacity activeOpacity={0.7}>
+            <Ionicons name="settings-outline" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Podium Section */}
+        {topThree.length >= 3 && (
+          <View style={styles.podium}>
+            {PODIUM_CONFIG.map((config) => {
+              const entry = topThree[config.idx];
+              if (!entry) return null;
+              const isFirst = config.idx === 0;
+              return (
+                <View
+                  key={entry.userId}
+                  style={[styles.podiumSpot, !isFirst && styles.podiumSide]}
+                >
+                  {isFirst && <Text style={styles.crown}>👑</Text>}
+                  <View
+                    style={[
+                      styles.podiumAvatar,
+                      {
+                        width: config.size,
+                        height: config.size,
+                        borderRadius: config.size / 2,
+                        borderColor: config.ringColor,
+                        borderWidth: isFirst ? 3 : 2,
+                        shadowColor: config.ringColor,
+                        shadowOpacity: config.glowOpacity,
+                        shadowRadius: isFirst ? 12 : 8,
+                        elevation: isFirst ? 6 : 4,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.podiumAvatarText,
+                        { color: config.ringColor, fontSize: isFirst ? fontSize.xl : fontSize.lg },
+                      ]}
+                    >
+                      {entry.avatarLetter}
+                    </Text>
+                  </View>
+                  <Text style={styles.podiumUsername} numberOfLines={1}>
+                    {entry.displayName.split(" ")[0]}
                   </Text>
+                  <RankBadge tier={entry.tier} tierColor={entry.tierColor} size="sm" />
+                  <Text style={styles.podiumPoints}>{entry.points.toLocaleString()} RP</Text>
                 </View>
-                <RankBadge
-                  tier={topThree[0].tier}
-                  tierColor={topThree[0].tierColor}
-                  size="md"
-                />
-                <View style={[styles.podiumBar, styles.podiumFirst]}>
-                  <Text style={[styles.podiumRank, styles.podiumRankFirst]}>1</Text>
-                </View>
-                <Text style={[styles.podiumName, styles.podiumNameFirst]} numberOfLines={1}>
-                  {topThree[0].displayName.split(" ")[0]}
-                </Text>
-                <Text style={[styles.podiumPoints, { color: "#F59E0B" }]}>{topThree[0].points.toLocaleString()}</Text>
-              </View>
+              );
+            })}
+          </View>
+        )}
 
-              {/* 3rd place - right */}
-              <View style={[styles.podiumSpot, styles.podiumSide]}>
-                <View style={[styles.podiumAvatar, styles.podiumAvatarBronze]}>
-                  <Text style={[styles.podiumAvatarText, { color: "#D97706" }]}>
-                    {topThree[2].displayName.charAt(0)}
-                  </Text>
-                </View>
-                <RankBadge
-                  tier={topThree[2].tier}
-                  tierColor={topThree[2].tierColor}
-                  size="sm"
-                />
-                <View style={[styles.podiumBar, styles.podiumThird]}>
-                  <Text style={styles.podiumRank}>3</Text>
-                </View>
-                <Text style={styles.podiumName} numberOfLines={1}>
-                  {topThree[2].displayName.split(" ")[0]}
-                </Text>
-                <Text style={styles.podiumPoints}>{topThree[2].points.toLocaleString()}</Text>
-              </View>
-            </View>
-          )}
-
-          <GlassCard style={styles.listCard}>
-            {rest.map((entry, idx) => (
+        {/* Leaderboard list */}
+        <GlassCard style={styles.listCard}>
+          {rest.map((entry, idx) => {
+            const isCurrentUser = entry.userId === "user-001";
+            return (
               <View key={entry.userId}>
-                <LeaderboardRow
-                  entry={entry}
-                  isCurrentUser={entry.userId === "user-001"}
-                />
+                <View style={[styles.listRow, isCurrentUser && styles.listRowCurrent]}>
+                  <Text style={styles.listRank}>{entry.rank}</Text>
+                  <View
+                    style={[
+                      styles.listAvatar,
+                      { borderColor: entry.tierColor + "40" },
+                    ]}
+                  >
+                    <Text style={styles.listAvatarText}>{entry.avatarLetter}</Text>
+                  </View>
+                  <View style={styles.listInfo}>
+                    <Text style={[styles.listName, isCurrentUser && { color: colors.glowCyan }]}>
+                      {entry.displayName}
+                    </Text>
+                  </View>
+                  <RankBadge tier={entry.tier} tierColor={entry.tierColor} size="sm" />
+                  <Text style={styles.listPoints}>{entry.points.toLocaleString()}</Text>
+                </View>
                 {idx < rest.length - 1 && <View style={styles.divider} />}
               </View>
-            ))}
-          </GlassCard>
+            );
+          })}
+        </GlassCard>
 
-          {!isPremium && (
-            <GlassCard style={styles.premiumLock} variant="highlighted">
-              <Text style={styles.lockIcon}>🔒</Text>
-              <Text style={styles.lockTitle}>Full Leaderboard</Text>
-              <Text style={styles.lockDesc}>
-                Upgrade to Iron3 Premium to see the full leaderboard,
-                discipline-specific rankings, and friend challenges.
-              </Text>
-            </GlassCard>
-          )}
-        </View>
+        {!isPremium && (
+          <GlassCard style={styles.premiumLock} variant="highlighted">
+            <Text style={styles.lockIcon}>🔒</Text>
+            <Text style={styles.lockTitle}>Full Leaderboard</Text>
+            <Text style={styles.lockDesc}>
+              Upgrade to Iron3 Premium to see the full leaderboard,
+              discipline-specific rankings, and friend challenges.
+            </Text>
+          </GlassCard>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -247,77 +205,54 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 32,
-  },
-  headerGradient: {
     paddingHorizontal: spacing.lg,
-    paddingTop: 8,
-    paddingBottom: 24,
     gap: 16,
   },
-  header: {
-    alignItems: "center",
-    marginTop: 8,
-    gap: 4,
-  },
-  title: {
-    color: colors.text,
-    fontSize: fontSize.xxxl,
-    fontWeight: fontWeight.extrabold,
-    letterSpacing: 4,
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.md,
-  },
-  standingsRow: {
+  tabToggle: {
     flexDirection: "row",
-    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    padding: 3,
+    marginTop: 8,
   },
-  standingCard: {
+  tabBtn: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 16,
+    paddingVertical: 10,
+    borderRadius: borderRadius.full,
   },
-  standingLabel: {
+  tabBtnActive: {
+    backgroundColor: colors.glowCyan + "20",
+    borderWidth: 1,
+    borderColor: colors.glowCyan + "40",
+  },
+  tabBtnText: {
     color: colors.textMuted,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
-  standingValue: {
-    color: colors.text,
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.extrabold,
+  tabBtnTextActive: {
+    color: colors.glowCyan,
   },
-  standingPct: {
-    color: colors.glowPurple,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-  },
-  body: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: 16,
-    gap: 16,
-  },
-  disciplineCards: {
-    gap: 12,
-  },
-  scopeRow: {
+  distFilterRow: {
     flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  filterRow: {
-    gap: 8,
-    paddingHorizontal: 4,
+  distFilter: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
   },
   podium: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
+    gap: 12,
+    paddingVertical: 16,
   },
   podiumSpot: {
     flex: 1,
@@ -325,109 +260,81 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   podiumSide: {
-    paddingTop: 20,
-  },
-  podiumCenter: {
-    paddingTop: 0,
+    paddingTop: 28,
   },
   crown: {
     fontSize: 28,
     marginBottom: -2,
   },
   podiumAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  podiumAvatarGold: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderColor: "#F59E0B",
-    borderWidth: 2.5,
-    shadowColor: "#F59E0B",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  podiumAvatarSilver: {
-    borderColor: "#94A3B8",
-    shadowColor: "#94A3B8",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  podiumAvatarBronze: {
-    borderColor: "#D97706",
-    shadowColor: "#D97706",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
   },
   podiumAvatarText: {
-    fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
   },
-  podiumBar: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    borderTopLeftRadius: borderRadius.sm,
-    borderTopRightRadius: borderRadius.sm,
-    marginTop: 6,
-  },
-  podiumFirst: {
-    height: 70,
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.3)",
-  },
-  podiumSecond: {
-    height: 50,
-    backgroundColor: "rgba(148, 163, 184, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.2)",
-  },
-  podiumThird: {
-    height: 38,
-    backgroundColor: "rgba(217, 119, 6, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(217, 119, 6, 0.2)",
-  },
-  podiumRank: {
-    color: colors.text,
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-  },
-  podiumRankFirst: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.extrabold,
-    color: "#F59E0B",
-  },
-  podiumName: {
+  podiumUsername: {
     color: colors.text,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     textAlign: "center",
   },
-  podiumNameFirst: {
-    fontWeight: fontWeight.bold,
-    fontSize: fontSize.sm,
-  },
   podiumPoints: {
     color: colors.textMuted,
-    fontSize: fontSize.xs,
+    fontSize: 10,
     fontWeight: fontWeight.semibold,
   },
   listCard: {
     padding: 4,
+  },
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  listRowCurrent: {
+    backgroundColor: "rgba(6, 182, 212, 0.08)",
+    borderRadius: borderRadius.md,
+    marginHorizontal: -4,
+    paddingHorizontal: 16,
+  },
+  listRank: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    width: 24,
+    textAlign: "center",
+  },
+  listAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listAvatarText: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+  listInfo: {
+    flex: 1,
+  },
+  listName: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+  listPoints: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
   },
   divider: {
     height: 1,

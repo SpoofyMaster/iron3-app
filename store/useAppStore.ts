@@ -25,6 +25,14 @@ import {
   WeeklyAvailability,
   PrimaryGoal,
   AppMode,
+  TrainingPlan,
+  DisciplineAvailability,
+  LiveWorkoutState,
+  SocialProfile,
+  FriendLeaderboardEntry,
+  ConnectedDevice,
+  LeaderboardTab,
+  GpsCoordinate,
 } from "@/types";
 import { getTriRank } from "@/lib/ranks";
 import {
@@ -41,6 +49,11 @@ import {
   mockMilestones,
   mockRaceGoal,
   mockWeeklyVolumes,
+  mockTrainingPlan,
+  mockAvailability,
+  mockSocialProfile,
+  mockFriendsLeaderboard,
+  mockConnectedDevices,
 } from "@/lib/mockData";
 
 interface AppState {
@@ -71,6 +84,25 @@ interface AppState {
 
   onboarding: OnboardingState;
   hasCompletedOnboarding: boolean;
+
+  // Training Plan (Task 3)
+  trainingPlan: TrainingPlan;
+
+  // Availability (Task 4)
+  availability: DisciplineAvailability;
+
+  // Live workout (Task 1)
+  liveWorkout: LiveWorkoutState;
+
+  // Social profile (Task 6)
+  socialProfile: SocialProfile;
+
+  // Friends leaderboard (Task 7)
+  friendsLeaderboard: FriendLeaderboardEntry[];
+  friendsLeaderboardTab: LeaderboardTab;
+
+  // Connected devices (Task 8)
+  connectedDevices: ConnectedDevice[];
 
   isLoading: boolean;
   showWorkoutConfirmation: boolean;
@@ -106,6 +138,28 @@ interface AppState {
   dismissWorkoutConfirmation: () => void;
 
   togglePremium: () => void;
+
+  // Training plan actions (Task 3)
+  togglePlanWorkoutComplete: (day: string) => void;
+
+  // Availability actions (Task 4)
+  setAvailability: (availability: DisciplineAvailability) => void;
+  toggleAvailabilityDay: (discipline: Discipline, day: string) => void;
+  setPreferredLongRideDay: (day: string | null) => void;
+
+  // Live workout actions (Task 1)
+  startLiveWorkout: (discipline: Discipline) => void;
+  pauseLiveWorkout: () => void;
+  resumeLiveWorkout: () => void;
+  stopLiveWorkout: () => void;
+  updateLiveWorkout: (elapsed: number, distance: number, coord?: GpsCoordinate) => void;
+  addSplit: (splitTime: number) => void;
+
+  // Friends leaderboard actions (Task 7)
+  setFriendsLeaderboardTab: (tab: LeaderboardTab) => void;
+
+  // Connected devices actions (Task 8)
+  toggleDeviceConnection: (deviceId: string) => void;
 }
 
 let workoutCounter = 100;
@@ -154,6 +208,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     preferredMode: null,
   },
   hasCompletedOnboarding: true,
+
+  trainingPlan: mockTrainingPlan,
+  availability: mockAvailability,
+  liveWorkout: {
+    isActive: false,
+    isPaused: false,
+    discipline: "run",
+    startTime: null,
+    elapsedTime: 0,
+    distance: 0,
+    coordinates: [],
+    splits: [],
+  },
+  socialProfile: mockSocialProfile,
+  friendsLeaderboard: mockFriendsLeaderboard,
+  friendsLeaderboardTab: "friends" as LeaderboardTab,
+  connectedDevices: mockConnectedDevices,
 
   isLoading: false,
   showWorkoutConfirmation: false,
@@ -309,5 +380,103 @@ export const useAppStore = create<AppState>((set, get) => ({
   togglePremium: () =>
     set((state) => ({
       user: { ...state.user, isPremium: !state.user.isPremium },
+    })),
+
+  togglePlanWorkoutComplete: (day: string) =>
+    set((state) => ({
+      trainingPlan: {
+        ...state.trainingPlan,
+        weeklyPlan: state.trainingPlan.weeklyPlan.map((w) =>
+          w.day === day ? { ...w, completed: !w.completed } : w
+        ),
+      },
+    })),
+
+  setAvailability: (availability: DisciplineAvailability) =>
+    set({ availability }),
+
+  toggleAvailabilityDay: (discipline: Discipline, day: string) =>
+    set((state) => {
+      const current = state.availability[discipline];
+      const updated = current.includes(day)
+        ? current.filter((d) => d !== day)
+        : [...current, day];
+      return {
+        availability: { ...state.availability, [discipline]: updated },
+      };
+    }),
+
+  setPreferredLongRideDay: (day: string | null) =>
+    set((state) => ({
+      availability: { ...state.availability, preferredLongRideDay: day },
+    })),
+
+  startLiveWorkout: (discipline: Discipline) =>
+    set({
+      liveWorkout: {
+        isActive: true,
+        isPaused: false,
+        discipline,
+        startTime: Date.now(),
+        elapsedTime: 0,
+        distance: 0,
+        coordinates: [],
+        splits: [],
+      },
+    }),
+
+  pauseLiveWorkout: () =>
+    set((state) => ({
+      liveWorkout: { ...state.liveWorkout, isPaused: true },
+    })),
+
+  resumeLiveWorkout: () =>
+    set((state) => ({
+      liveWorkout: { ...state.liveWorkout, isPaused: false },
+    })),
+
+  stopLiveWorkout: () =>
+    set((state) => ({
+      liveWorkout: {
+        ...state.liveWorkout,
+        isActive: false,
+        isPaused: false,
+      },
+    })),
+
+  updateLiveWorkout: (elapsed: number, distance: number, coord?: GpsCoordinate) =>
+    set((state) => ({
+      liveWorkout: {
+        ...state.liveWorkout,
+        elapsedTime: elapsed,
+        distance,
+        coordinates: coord
+          ? [...state.liveWorkout.coordinates, coord]
+          : state.liveWorkout.coordinates,
+      },
+    })),
+
+  addSplit: (splitTime: number) =>
+    set((state) => ({
+      liveWorkout: {
+        ...state.liveWorkout,
+        splits: [...state.liveWorkout.splits, splitTime],
+      },
+    })),
+
+  setFriendsLeaderboardTab: (tab: LeaderboardTab) =>
+    set({ friendsLeaderboardTab: tab }),
+
+  toggleDeviceConnection: (deviceId: string) =>
+    set((state) => ({
+      connectedDevices: state.connectedDevices.map((d) =>
+        d.id === deviceId
+          ? {
+              ...d,
+              isConnected: !d.isConnected,
+              lastSync: !d.isConnected ? new Date().toISOString() : d.lastSync,
+            }
+          : d
+      ),
     })),
 }));
