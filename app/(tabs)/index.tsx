@@ -29,6 +29,7 @@ import { formatDistance } from "@/lib/scoring";
 import { getTriRank, getRankForPoints } from "@/lib/ranks";
 import { MOTIVATIONAL_MESSAGES } from "@/lib/mockData";
 import { Discipline } from "@/types";
+import { getNextEvent, daysUntil } from "@/lib/ironmanEvents";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -67,6 +68,9 @@ export default function HomeScreen() {
     const diff = new Date(raceGoal.raceDate).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [raceGoal]);
+
+  // Next real Ironman event from global calendar
+  const nextIronmanEvent = useMemo(() => getNextEvent(), []);
 
   const nextMilestone = useMemo(() => {
     return milestones.find((m) => m.achievedAt === null);
@@ -175,21 +179,29 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
 
-          {daysToRace !== null && (
-            <GlassCard style={styles.raceCountdown} variant="highlighted">
-              <View style={styles.raceRow}>
-                <View style={styles.raceIcon}>
-                  <Text style={styles.raceEmoji}>🏁</Text>
+          {nextIronmanEvent && (
+            <TouchableOpacity
+              onPress={() => router.push("/events" as never)}
+              activeOpacity={0.85}
+            >
+              <GlassCard style={styles.raceCountdown} variant="highlighted">
+                <View style={styles.raceRow}>
+                  <Text style={{ fontSize: 28 }}>{nextIronmanEvent.flag}</Text>
+                  <View style={styles.raceInfo}>
+                    <Text style={styles.raceDays}>
+                      {daysUntil(nextIronmanEvent.date)} days
+                    </Text>
+                    <Text style={styles.raceLabel} numberOfLines={1}>
+                      to {nextIronmanEvent.name}
+                    </Text>
+                    <Text style={[styles.raceLabel, { color: colors.textMuted, fontSize: fontSize.xs }]}>
+                      {nextIronmanEvent.location}, {nextIronmanEvent.country}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </View>
-                <View style={styles.raceInfo}>
-                  <Text style={styles.raceDays}>{daysToRace} days</Text>
-                  <Text style={styles.raceLabel}>
-                    to {raceGoal?.raceName ?? "Race Day"}
-                  </Text>
-                </View>
-                <View style={styles.racePulse} />
-              </View>
-            </GlassCard>
+              </GlassCard>
+            </TouchableOpacity>
           )}
 
           <GlassCard style={styles.motivational}>

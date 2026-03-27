@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,13 +9,17 @@ import {
   Switch,
   Alert,
   Dimensions,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { useAppStore } from "@/store/useAppStore";
 import { GlassCard, RankBadge, MiniChart, SectionHeader, LevelStreakBar } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatPoints, getTriRank } from "@/lib/ranks";
+import { supabase } from "@/lib/supabase";
 import { signOut } from "@/lib/auth";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -34,6 +38,8 @@ const WEEKLY_DISTANCES = [
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAppStore((s) => s.user);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const setAuth = useAppStore((s) => s.setAuth);
   const swimPoints = useAppStore((s) => s.swimPoints);
   const bikePoints = useAppStore((s) => s.bikePoints);
   const runPoints = useAppStore((s) => s.runPoints);
@@ -42,6 +48,47 @@ export default function ProfileScreen() {
   const activities = useAppStore((s) => s.activities);
   const togglePremium = useAppStore((s) => s.togglePremium);
   const socialProfile = useAppStore((s) => s.socialProfile);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Allow photo access to set your profile picture.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    if (!currentUserId) {
+      Alert.alert("Not logged in", "Please log in to update your photo.");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const asset = result.assets[0];
+      const ext = asset.uri.split(".").pop() ?? "jpg";
+      const path = `avatars/${currentUserId}.${ext}`;
+      const formData = new FormData();
+      formData.append("file", { uri: asset.uri, name: `avatar.${ext}`, type: `image/${ext}` } as never);
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, formData, { upsert: true, contentType: `image/${ext}` });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const avatarUrl = urlData.publicUrl;
+      await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", currentUserId);
+      useAppStore.setState((s) => ({ user: { ...s.user, avatarUrl } }));
+      Alert.alert("✅ Done", "Profile photo updated!");
+    } catch (e) {
+      Alert.alert("Upload failed", "Could not upload photo. Try again.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const overallHistory = rankHistory.map((h) => h.overallPoints);
   const historyLabels = rankHistory.map((h) =>
@@ -73,20 +120,30 @@ export default function ProfileScreen() {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarSection}>
-            <View style={styles.avatarContainer}>
-              <View style={[styles.avatar, { borderColor: triRank.tierColor }]}>
-                <Text style={styles.avatarText}>
-                  {user.displayName.charAt(0).toUpperCase()}
-                </Text>
+            <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8}>
+              <View style={styles.avatarContainer}>
+                <View style={[styles.avatar, { borderColor: triRank.tierColor }]}>
+                  {user.avatarUrl ? (
+                    <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+                  ) : (
+                    <Text style={styles.avatarText}>
+                      {user.displayName.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
+                  {uploadingPhoto && (
+                    <View style={styles.avatarOverlay}>
+                      <ActivityIndicator color="#fff" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.editPhotoBadge}>
+                  <Ionicons name="camera" size={12} color="#fff" />
+                </View>
+                <View style={styles.rankBadgeOverlay}>
+                  <RankBadge tier={triRank.tier} tierColor={triRank.tierColor} size="sm" />
+                </View>
               </View>
-              <View style={styles.rankBadgeOverlay}>
-                <RankBadge
-                  tier={triRank.tier}
-                  tierColor={triRank.tierColor}
-                  size="sm"
-                />
-              </View>
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{user.displayName}</Text>
@@ -359,6 +416,32 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.xxxl,
     fontWeight: fontWeight.bold,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 37,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 37,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editPhotoBadge: {
+    position: "absolute",
+    bottom: 16,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.background,
+    zIndex: 10,
   },
   rankBadgeOverlay: {
     position: "absolute",

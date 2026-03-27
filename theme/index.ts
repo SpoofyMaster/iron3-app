@@ -1,61 +1,68 @@
-// Iron3 Theme — Matches the landing page (iron3-landing/index.html)
-// Primary accent: #FF4500 (orange-red)
-// Swim: #00B4D8 | Bike: #80ED99 | Run: #FFB347
+// Iron3 Theme — Ironman Atmosphere
+// Inspired by: ironman.com + iron3-landing/index.html
+// Key: dark charcoal base, orange-red fire accent, cyan swim, green bike, amber run
 
 export const colors = {
   background: "#0A0A0F",
-  surface: "#0E0E1A",
-  surfaceLight: "#161620",
+  surface: "#0F0F14",
+  surfaceLight: "#18181F",
   surfaceGlass: "rgba(255, 255, 255, 0.04)",
-  surfaceGlassLight: "rgba(255, 255, 255, 0.06)",
+  surfaceGlassLight: "rgba(255, 255, 255, 0.07)",
   surfaceGlassBorder: "rgba(255, 255, 255, 0.08)",
 
   text: "#F5F5F7",
   textSecondary: "rgba(255, 255, 255, 0.55)",
   textMuted: "rgba(255, 255, 255, 0.3)",
 
-  // Primary accent — orange-red from landing page
+  // Primary: Ironman fire orange-red
   primary: "#FF4500",
   primaryLight: "#FF6B35",
   primaryDark: "#CC3700",
 
-  // Gradient orbs (from landing page)
-  gradientStart: "#FF4500",
-  gradientMid: "#00B4D8",
-  gradientEnd: "#FFB347",
+  // Accent for gradient hero text (green → gold like landing page RANK)
+  accent: "#80ED99",
+  accentGold: "#FFD700",
 
-  glowOrange: "#FF4500",
-  glowCyan: "#00B4D8",
-  glowGreen: "#80ED99",
-  // Aliases for backward compatibility
-  glowPurple: "#FF4500",
-  glowBlue: "#00B4D8",
+  // Gradient backgrounds
+  gradientStart: "#0A0A0F",
+  gradientMid: "#1A0A05",
+  gradientEnd: "#0A0A0F",
 
-  // Disciplines — exact landing page colors
+  // Glow effects
+  glowOrange: "rgba(255, 69, 0, 0.5)",
+  glowCyan: "rgba(0, 180, 216, 0.5)",
+  glowGreen: "rgba(128, 237, 153, 0.4)",
+  glowGold: "rgba(255, 215, 0, 0.4)",
+
+  // Backward compat aliases
+  glowPurple: "rgba(255, 69, 0, 0.5)",
+  glowBlue: "rgba(0, 180, 216, 0.5)",
+
+  // Disciplines — matching landing page exactly
   swim: "#00B4D8",
-  swimLight: "#22D3EE",
-  swimDark: "#0891B2",
-  swimGradient: ["#00B4D8", "#0891B2"] as const,
+  swimLight: "#38C7E8",
+  swimDark: "#0091B0",
+  swimGradient: ["#00B4D8", "#0091B0"] as const,
 
   bike: "#80ED99",
-  bikeLight: "#A7F3D0",
-  bikeDark: "#34D399",
-  bikeGradient: ["#80ED99", "#34D399"] as const,
+  bikeLight: "#A7F3C0",
+  bikeDark: "#4DD87A",
+  bikeGradient: ["#80ED99", "#4DD87A"] as const,
 
   run: "#FFB347",
-  runLight: "#FCD34D",
-  runDark: "#F59E0B",
-  runGradient: ["#FFB347", "#F59E0B"] as const,
+  runLight: "#FFCC80",
+  runDark: "#FF8C00",
+  runGradient: ["#FFB347", "#FF8C00"] as const,
 
   brick: "#FF6B35",
   brickLight: "#FF8C5A",
   brickDark: "#FF4500",
 
   strength: "#80ED99",
-  strengthLight: "#A7F3D0",
-  strengthDark: "#34D399",
+  strengthLight: "#A7F3C0",
+  strengthDark: "#4DD87A",
 
-  // Rank colors — from landing page
+  // Rank tiers — Ironman prestige palette
   rank: {
     Iron: "#8B8B8B",
     Bronze: "#CD7F32",
@@ -68,22 +75,22 @@ export const colors = {
   },
 
   rankGlow: {
-    Iron: "rgba(139, 139, 139, 0.3)",
-    Bronze: "rgba(205, 127, 50, 0.4)",
-    Silver: "rgba(192, 192, 192, 0.3)",
-    Gold: "rgba(255, 215, 0, 0.4)",
+    Iron: "rgba(139, 139, 139, 0.25)",
+    Bronze: "rgba(205, 127, 50, 0.35)",
+    Silver: "rgba(192, 192, 192, 0.25)",
+    Gold: "rgba(255, 215, 0, 0.45)",
     Platinum: "rgba(229, 228, 226, 0.3)",
     Diamond: "rgba(0, 180, 216, 0.5)",
-    Elite: "rgba(128, 237, 153, 0.4)",
-    Legendary: "rgba(255, 69, 0, 0.6)",
+    Elite: "rgba(128, 237, 153, 0.45)",
+    Legendary: "rgba(255, 69, 0, 0.65)",
   },
 
   error: "#EF4444",
   success: "#80ED99",
   warning: "#FFB347",
 
-  tabBar: "#06060C",
-  tabBarBorder: "rgba(255, 69, 0, 0.15)",
+  tabBar: "#080810",
+  tabBarBorder: "rgba(255, 69, 0, 0.2)",
 } as const;
 
 export const spacing = {

@@ -97,6 +97,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="workout" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="events" options={{ animation: "slide_from_right" }} />
       </Stack>
     </>
   );

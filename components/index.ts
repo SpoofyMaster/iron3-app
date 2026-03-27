@@ -16,3 +16,4 @@ export { MilestoneCard } from "./MilestoneCard";
 export { PremiumLock } from "./PremiumLock";
 export { GradientBackground } from "./GradientBackground";
 export { LevelStreakBar } from "./LevelStreakBar";
+export { IronmanEventCard } from "./IronmanEventCard";
