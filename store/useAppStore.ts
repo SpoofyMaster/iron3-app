@@ -514,7 +514,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           user: {
             ...state.user,
             id: profile.id,
-            name: profile.display_name || email.split("@")[0],
+            displayName: profile.display_name || email.split("@")[0],
             email: profile.email,
             avatarUrl: profile.avatar_url ?? state.user.avatarUrl,
             isPremium: profile.is_premium,

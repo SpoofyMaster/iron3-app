@@ -71,7 +71,8 @@ export default function LiveWorkoutScreen() {
     if (!liveWorkout.isActive) {
       startLiveWorkout("run");
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveWorkout.isActive]);
 
   useEffect(() => {
     if (liveWorkout.isActive && !liveWorkout.isPaused) {
