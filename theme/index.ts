@@ -1,78 +1,89 @@
+// Iron3 Theme — Matches the landing page (iron3-landing/index.html)
+// Primary accent: #FF4500 (orange-red)
+// Swim: #00B4D8 | Bike: #80ED99 | Run: #FFB347
+
 export const colors = {
-  background: "#080810",
+  background: "#0A0A0F",
   surface: "#0E0E1A",
-  surfaceLight: "#161625",
-  surfaceGlass: "rgba(255, 255, 255, 0.06)",
-  surfaceGlassLight: "rgba(255, 255, 255, 0.09)",
-  surfaceGlassBorder: "rgba(255, 255, 255, 0.1)",
+  surfaceLight: "#161620",
+  surfaceGlass: "rgba(255, 255, 255, 0.04)",
+  surfaceGlassLight: "rgba(255, 255, 255, 0.06)",
+  surfaceGlassBorder: "rgba(255, 255, 255, 0.08)",
 
-  text: "#FFFFFF",
-  textSecondary: "#A0A0B8",
-  textMuted: "#606078",
+  text: "#F5F5F7",
+  textSecondary: "rgba(255, 255, 255, 0.55)",
+  textMuted: "rgba(255, 255, 255, 0.3)",
 
-  primary: "#8B5CF6",
-  primaryLight: "#A78BFA",
-  primaryDark: "#7C3AED",
+  // Primary accent — orange-red from landing page
+  primary: "#FF4500",
+  primaryLight: "#FF6B35",
+  primaryDark: "#CC3700",
 
-  gradientStart: "#1a0533",
-  gradientMid: "#0d1b3e",
-  gradientEnd: "#071428",
+  // Gradient orbs (from landing page)
+  gradientStart: "#FF4500",
+  gradientMid: "#00B4D8",
+  gradientEnd: "#FFB347",
 
-  glowPurple: "#8B5CF6",
-  glowCyan: "#06B6D4",
-  glowBlue: "#3B82F6",
+  glowOrange: "#FF4500",
+  glowCyan: "#00B4D8",
+  glowGreen: "#80ED99",
+  // Aliases for backward compatibility
+  glowPurple: "#FF4500",
+  glowBlue: "#00B4D8",
 
-  swim: "#06B6D4",
+  // Disciplines — exact landing page colors
+  swim: "#00B4D8",
   swimLight: "#22D3EE",
   swimDark: "#0891B2",
-  swimGradient: ["#06B6D4", "#0891B2"] as const,
+  swimGradient: ["#00B4D8", "#0891B2"] as const,
 
-  bike: "#F59E0B",
-  bikeLight: "#FBBF24",
-  bikeDark: "#D97706",
-  bikeGradient: ["#F59E0B", "#D97706"] as const,
+  bike: "#80ED99",
+  bikeLight: "#A7F3D0",
+  bikeDark: "#34D399",
+  bikeGradient: ["#80ED99", "#34D399"] as const,
 
-  run: "#10B981",
-  runLight: "#34D399",
-  runDark: "#059669",
-  runGradient: ["#10B981", "#059669"] as const,
+  run: "#FFB347",
+  runLight: "#FCD34D",
+  runDark: "#F59E0B",
+  runGradient: ["#FFB347", "#F59E0B"] as const,
 
-  brick: "#F97316",
-  brickLight: "#FB923C",
-  brickDark: "#EA580C",
+  brick: "#FF6B35",
+  brickLight: "#FF8C5A",
+  brickDark: "#FF4500",
 
-  strength: "#A855F7",
-  strengthLight: "#C084FC",
-  strengthDark: "#9333EA",
+  strength: "#80ED99",
+  strengthLight: "#A7F3D0",
+  strengthDark: "#34D399",
 
+  // Rank colors — from landing page
   rank: {
-    Iron: "#9CA3AF",
-    Bronze: "#D97706",
-    Silver: "#94A3B8",
-    Gold: "#F59E0B",
-    Platinum: "#818CF8",
-    Diamond: "#22D3EE",
-    Elite: "#A78BFA",
-    Legendary: "#F43F5E",
+    Iron: "#8B8B8B",
+    Bronze: "#CD7F32",
+    Silver: "#C0C0C0",
+    Gold: "#FFD700",
+    Platinum: "#E5E4E2",
+    Diamond: "#00B4D8",
+    Elite: "#80ED99",
+    Legendary: "#FF4500",
   },
 
   rankGlow: {
-    Iron: "rgba(156, 163, 175, 0.4)",
-    Bronze: "rgba(217, 119, 6, 0.4)",
-    Silver: "rgba(148, 163, 184, 0.4)",
-    Gold: "rgba(245, 158, 11, 0.5)",
-    Platinum: "rgba(129, 140, 248, 0.5)",
-    Diamond: "rgba(34, 211, 238, 0.5)",
-    Elite: "rgba(167, 139, 250, 0.5)",
-    Legendary: "rgba(244, 63, 94, 0.6)",
+    Iron: "rgba(139, 139, 139, 0.3)",
+    Bronze: "rgba(205, 127, 50, 0.4)",
+    Silver: "rgba(192, 192, 192, 0.3)",
+    Gold: "rgba(255, 215, 0, 0.4)",
+    Platinum: "rgba(229, 228, 226, 0.3)",
+    Diamond: "rgba(0, 180, 216, 0.5)",
+    Elite: "rgba(128, 237, 153, 0.4)",
+    Legendary: "rgba(255, 69, 0, 0.6)",
   },
 
   error: "#EF4444",
-  success: "#10B981",
-  warning: "#F59E0B",
+  success: "#80ED99",
+  warning: "#FFB347",
 
   tabBar: "#06060C",
-  tabBarBorder: "rgba(139, 92, 246, 0.15)",
+  tabBarBorder: "rgba(255, 69, 0, 0.15)",
 } as const;
 
 export const spacing = {
