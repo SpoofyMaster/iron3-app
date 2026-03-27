@@ -40,6 +40,7 @@ export default function LoginScreen() {
     }
     if (result.user) {
       setAuth(true, result.user.id);
+      await useAppStore.getState().fetchProfile(result.user.id);
     }
   };
 

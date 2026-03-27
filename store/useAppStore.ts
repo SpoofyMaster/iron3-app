@@ -1,3 +1,4 @@
+import { getProfile } from "@/lib/dataService";
 import { create } from "zustand";
 import {
   Activity,
@@ -167,6 +168,7 @@ interface AppState {
 
   // Auth actions
   setAuth: (isAuthenticated: boolean, userId?: string) => void;
+  fetchProfile: (userId: string) => Promise<void>;
 }
 
 let workoutCounter = 100;
@@ -497,4 +499,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       isAuthenticated,
       currentUserId: userId ?? null,
     }),
+
+  // Fetch profile from Supabase
+  fetchProfile: async (userId: string) => {
+    try {
+      const profile = await getProfile(userId);
+      if (profile) {
+        set((state) => ({
+          user: {
+            ...state.user,
+            id: profile.id,
+            name: profile.display_name || profile.email.split('@')[0],
+            email: profile.email,
+            avatar: profile.avatar_url,
+            isPremium: profile.is_premium,
+          }
+        }));
+      }
+    } catch (e) {
+      console.log('Profile fetch failed, using mock data');
+    }
+  },
 }));
