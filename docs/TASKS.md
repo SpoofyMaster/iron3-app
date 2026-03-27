@@ -29,24 +29,53 @@
 - [x] Build Auth/Login screen
 - [x] Fix Zustand infinite loop bugs
 
-## Phase 2: Core Features 🔨 IN PROGRESS
-- [ ] Restructure to 5 tabs (Home, Log, Ranks, Progress, Profile)
-- [ ] Build Workout Logging screen (<20 sec flow)
-- [ ] Build Workout History screen
-- [ ] Build unified Ranks screen (overview + leaderboard)
-- [ ] Move discipline screens to stack navigation
-- [ ] Build Progress/Analytics screen
-- [ ] Expand to 8 rank tiers (add Platinum + Diamond)
-- [ ] Implement consistency/streak/balance scoring bonuses
-- [ ] Build streak tracking system
-- [ ] Build milestone system + milestone cards
-- [ ] Upgrade Home Dashboard (streak, countdown, motivation)
-- [ ] Expand onboarding to 11 steps
-- [ ] Implement PremiumLock gating component
-- [ ] Add premium locks throughout app
-- [ ] Expand Supabase schema (race_goals, streaks, milestones)
+## Phase 2: Core Features ✅ COMPLETE
+- [x] Restructure to 5 tabs (Home, Log, Ranks, Progress, Profile)
+- [x] Build Workout Logging screen (<20 sec flow)
+- [x] Build Workout History screen
+- [x] Build unified Ranks screen (overview + leaderboard)
+- [x] Move discipline screens to stack navigation
+- [x] Build Progress/Analytics screen
+- [x] Expand to 8 rank tiers (add Platinum + Diamond)
+- [x] Implement consistency/streak/balance scoring bonuses
+- [x] Build streak tracking system
+- [x] Build milestone system + milestone cards
+- [x] Upgrade Home Dashboard (streak, countdown, motivation)
+- [x] Expand onboarding to 11 steps
+- [x] Implement PremiumLock gating component
+- [x] Add premium locks throughout app
+- [x] Expand Supabase schema (race_goals, streaks, milestones)
 
-## Phase 3: Polish & Retention 📋 PLANNED
+## Phase 3: Visual Overhaul ✅ COMPLETE
+- [x] SVG shield rank badges with wings + glow
+- [x] Purple/blue/cyan gradient backgrounds
+- [x] Neon glow effects, podium leaderboard
+- [x] Gaming-style rank aesthetic (League/Valorant inspired)
+- [x] Rank emblem PNG assets (all 8 tiers)
+
+## Phase 4: Mobile Features ✅ COMPLETE
+- [x] Live GPS workout tracking (app/workout/live.tsx)
+- [x] Activity detail screen with laps (app/workout/[id].tsx)
+- [x] Training plan / availability scheduler (app/settings/)
+- [x] Share to Instagram (app/workout/share.tsx)
+- [x] Friends leaderboard with podium photos
+- [x] Apple HealthKit integration architecture (lib/healthkit.ts)
+- [x] Garmin integration architecture (lib/garmin.ts)
+- [x] Level/XP/streak top bar (components/LevelStreakBar.tsx)
+- [x] Enhanced profile with social features
+- [x] Enhanced home dashboard with level bar
+
+## Phase 5: Auth & Backend 📋 NEXT UP
+- [ ] Supabase auth integration (email + social)
+- [ ] Password reset flow
+- [ ] Profile data persistence to Supabase
+- [ ] Workout data sync to Supabase
+- [ ] Rank snapshot daily computation
+- [ ] Leaderboard refresh Edge Function
+- [ ] RevenueCat subscription integration
+- [ ] Receipt validation
+
+## Phase 6: Polish & Retention 📋 PLANNED
 - [ ] Rank-up celebration animation
 - [ ] Milestone unlock animation
 - [ ] Workout confirmation animation (points count-up)
@@ -58,17 +87,7 @@
 - [ ] Rank-down warning system
 - [ ] Today's training focus suggestion
 
-## Phase 4: Auth & Backend 📋 PLANNED
-- [ ] Supabase auth integration (email + social)
-- [ ] Password reset flow
-- [ ] Profile data persistence to Supabase
-- [ ] Workout data sync to Supabase
-- [ ] Rank snapshot daily computation
-- [ ] Leaderboard refresh Edge Function
-- [ ] RevenueCat subscription integration
-- [ ] Receipt validation
-
-## Phase 5: Launch Prep 📋 PLANNED
+## Phase 7: Launch Prep 📋 PLANNED
 - [ ] App icon + splash screen
 - [ ] App Store screenshots
 - [ ] App Store description + metadata
@@ -80,10 +99,10 @@
 - [ ] Performance optimization pass
 - [ ] Accessibility audit
 
-## Phase 6: V2 Features 📋 FUTURE
+## Phase 8: V2 Features 📋 FUTURE
 - [ ] Strava integration
-- [ ] Garmin Connect integration
-- [ ] Apple HealthKit sync
+- [ ] Garmin Connect full integration
+- [ ] Apple HealthKit full sync
 - [ ] Pace-weighted scoring
 - [ ] Race finish time prediction
 - [ ] Age-group percentile comparison
