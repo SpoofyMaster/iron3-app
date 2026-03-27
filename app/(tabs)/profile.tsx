@@ -70,21 +70,29 @@ export default function ProfileScreen() {
     setUploadingPhoto(true);
     try {
       const asset = result.assets[0];
-      const ext = asset.uri.split(".").pop() ?? "jpg";
-      const path = `avatars/${currentUserId}.${ext}`;
-      const formData = new FormData();
-      formData.append("file", { uri: asset.uri, name: `avatar.${ext}`, type: `image/${ext}` } as never);
+      const ext = (asset.uri.split(".").pop() ?? "jpg").toLowerCase().replace("jpeg", "jpg");
+      const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+      const path = `${currentUserId}/avatar.${ext}`;
+
+      // Fetch the image as a blob (works in React Native)
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, formData, { upsert: true, contentType: `image/${ext}` });
+        .upload(path, blob, { upsert: true, contentType: mimeType });
       if (uploadError) throw uploadError;
+
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-      const avatarUrl = urlData.publicUrl;
-      await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", currentUserId);
+      // Add cache-buster so image refreshes immediately
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      await supabase.from("profiles").update({ avatar_url: urlData.publicUrl }).eq("id", currentUserId);
       useAppStore.setState((s) => ({ user: { ...s.user, avatarUrl } }));
       Alert.alert("✅ Done", "Profile photo updated!");
     } catch (e) {
-      Alert.alert("Upload failed", "Could not upload photo. Try again.");
+      console.error("Upload error:", e);
+      Alert.alert("Upload failed", "Could not upload photo. Make sure the 'avatars' bucket exists in Supabase Storage.");
     } finally {
       setUploadingPhoto(false);
     }
