@@ -12,6 +12,25 @@ export async function getProfile(userId: string) {
     .select("*")
     .eq("id", userId)
     .single();
+
+  // PGRST116 = no rows found — profile doesn't exist yet
+  if (error && error.code === "PGRST116") return null;
+  if (error) throw error;
+  return data;
+}
+
+export async function getOrCreateProfile(userId: string, email: string, displayName?: string) {
+  // Try to get existing profile first
+  const existing = await getProfile(userId);
+  if (existing) return existing;
+
+  // Profile doesn't exist — create it now
+  const name = displayName || email.split("@")[0];
+  const { data, error } = await supabase
+    .from("profiles")
+    .insert({ id: userId, email, display_name: name })
+    .select()
+    .single();
   if (error) throw error;
   return data;
 }

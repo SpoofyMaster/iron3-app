@@ -1,4 +1,5 @@
-import { getProfile } from "@/lib/dataService";
+import { getOrCreateProfile } from "@/lib/dataService";
+import { supabase } from "@/lib/supabase";
 import { create } from "zustand";
 import {
   Activity,
@@ -500,24 +501,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentUserId: userId ?? null,
     }),
 
-  // Fetch profile from Supabase
+  // Fetch (or auto-create) profile from Supabase
   fetchProfile: async (userId: string) => {
     try {
-      const profile = await getProfile(userId);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const email = authUser?.email ?? "";
+      const displayName = authUser?.user_metadata?.display_name ?? "";
+
+      const profile = await getOrCreateProfile(userId, email, displayName);
       if (profile) {
         set((state) => ({
           user: {
             ...state.user,
             id: profile.id,
-            name: profile.display_name || profile.email.split('@')[0],
+            name: profile.display_name || email.split("@")[0],
             email: profile.email,
-            avatar: profile.avatar_url,
+            avatarUrl: profile.avatar_url ?? state.user.avatarUrl,
             isPremium: profile.is_premium,
-          }
+          },
         }));
       }
     } catch (e) {
-      console.log('Profile fetch failed, using mock data');
+      console.error("Profile fetch/create error:", e);
     }
   },
 }));
