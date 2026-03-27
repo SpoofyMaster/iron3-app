@@ -104,6 +104,10 @@ interface AppState {
   // Connected devices (Task 8)
   connectedDevices: ConnectedDevice[];
 
+  // Auth state
+  isAuthenticated: boolean;
+  currentUserId: string | null;
+
   isLoading: boolean;
   showWorkoutConfirmation: boolean;
   lastLoggedPoints: number;
@@ -160,6 +164,9 @@ interface AppState {
 
   // Connected devices actions (Task 8)
   toggleDeviceConnection: (deviceId: string) => void;
+
+  // Auth actions
+  setAuth: (isAuthenticated: boolean, userId?: string) => void;
 }
 
 let workoutCounter = 100;
@@ -225,6 +232,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   friendsLeaderboard: mockFriendsLeaderboard,
   friendsLeaderboardTab: "friends" as LeaderboardTab,
   connectedDevices: mockConnectedDevices,
+
+  // Auth state — defaults to "authenticated" for mock/dev mode
+  isAuthenticated: true,
+  currentUserId: null,
 
   isLoading: false,
   showWorkoutConfirmation: false,
@@ -479,4 +490,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           : d
       ),
     })),
+
+  // Auth actions
+  setAuth: (isAuthenticated: boolean, userId?: string) =>
+    set({
+      isAuthenticated,
+      currentUserId: userId ?? null,
+    }),
 }));
