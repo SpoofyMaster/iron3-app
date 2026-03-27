@@ -10,6 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: "iron3",
   userInterfaceStyle: "dark",
   splash: {
+    image: "./assets/splash.png",
     backgroundColor: "#0A0A0F",
     resizeMode: "contain",
   },
@@ -22,6 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
+      foregroundImage: "./assets/icon.png",
       backgroundColor: "#0A0A0F",
     },
     package: "com.iron3.app",
