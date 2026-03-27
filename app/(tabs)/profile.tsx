@@ -16,6 +16,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { GlassCard, RankBadge, MiniChart, SectionHeader, LevelStreakBar } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatPoints, getTriRank } from "@/lib/ranks";
+import { signOut } from "@/lib/auth";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -267,7 +268,14 @@ export default function ProfileScreen() {
             onPress={() =>
               Alert.alert("Sign Out", "Are you sure you want to sign out?", [
                 { text: "Cancel", style: "cancel" },
-                { text: "Sign Out", style: "destructive" },
+                {
+                  text: "Sign Out",
+                  style: "destructive",
+                  onPress: async () => {
+                    await signOut();
+                    useAppStore.getState().setAuth(false);
+                  },
+                },
               ])
             }
           />
