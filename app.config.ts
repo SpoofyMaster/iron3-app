@@ -9,7 +9,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: "./assets/icon.png",
   scheme: "iron3",
   userInterfaceStyle: "dark",
-  newArchEnabled: true,
   splash: {
     backgroundColor: "#0A0A0F",
     resizeMode: "contain",
