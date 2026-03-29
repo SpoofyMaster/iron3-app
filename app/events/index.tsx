@@ -6,7 +6,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
-import { IRONMAN_EVENTS_2026, getUpcomingEvents, daysUntil, IronmanEvent } from "@/lib/ironmanEvents";
+import { IRONMAN_EVENTS_2026, getUpcomingEvents, daysUntil, formatEventDate, IronmanEvent } from "@/lib/ironmanEvents";
 import { IronmanEventCard } from "@/components/IronmanEventCard";
 import { useRouter } from "expo-router";
 
@@ -18,7 +18,9 @@ export default function EventsScreen() {
   const filtered = IRONMAN_EVENTS_2026
     .filter(e => {
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const upcoming = new Date(e.date) >= today;
+      const [y, m, d] = e.date.split("-").map(Number);
+      const eventDate = new Date(y, m - 1, d);
+      const upcoming = eventDate >= today;
       const matchDist = filter === "all" || e.distance === filter;
       const matchSearch = search === "" ||
         e.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -26,7 +28,11 @@ export default function EventsScreen() {
         e.country.toLowerCase().includes(search.toLowerCase());
       return upcoming && matchDist && matchSearch;
     })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .sort((a, b) => {
+      const [ay, am, ad] = a.date.split("-").map(Number);
+      const [by, bm, bd] = b.date.split("-").map(Number);
+      return new Date(ay, am - 1, ad).getTime() - new Date(by, bm - 1, bd).getTime();
+    });
 
   const nextEvent = getUpcomingEvents(1)[0];
 
