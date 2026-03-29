@@ -237,8 +237,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   friendsLeaderboardTab: "friends" as LeaderboardTab,
   connectedDevices: mockConnectedDevices,
 
-  // Auth state — defaults to "authenticated" for mock/dev mode
-  isAuthenticated: true,
+  // Auth state — start unauthenticated, real session check happens in _layout.tsx
+  isAuthenticated: false,
   currentUserId: null,
 
   isLoading: false,
