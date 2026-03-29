@@ -65,8 +65,14 @@ export default function HomeScreen() {
 
   const daysToRace = useMemo(() => {
     if (!raceGoal?.raceDate) return null;
-    const diff = new Date(raceGoal.raceDate).getTime() - Date.now();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Parse just the date portion to avoid UTC offset shifting the day
+    const dateStr = raceGoal.raceDate.slice(0, 10); // "YYYY-MM-DD"
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const raceDay = new Date(y, m - 1, d);
+    const diff = raceDay.getTime() - today.getTime();
+    return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
   }, [raceGoal]);
 
   // Next real Ironman event from global calendar
