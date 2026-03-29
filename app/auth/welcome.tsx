@@ -153,7 +153,7 @@ export default function WelcomeScreen() {
         {/* Brand row */}
         <View style={styles.brand}>
           <Image
-            source={require("@/assets/icon.png")}
+            source={require("@/assets/logo-transparent.png")}
             style={styles.brandLogo}
             resizeMode="contain"
           />

@@ -91,7 +91,7 @@ export default function SplashAnimationScreen() {
       />
       {/* Logo */}
       <Animated.Image
-        source={require("@/assets/icon.png")}
+        source={require("@/assets/logo-transparent.png")}
         style={[styles.logo, { opacity, transform: [{ scale }] }]}
         resizeMode="contain"
       />
