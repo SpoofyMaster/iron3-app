@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,24 +6,153 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  Switch,
+  Alert,
+  ActivityIndicator,
+  Platform,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAppStore } from "@/store/useAppStore";
-import { GlassCard } from "@/components";
+import { GlassCard, SectionHeader } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
+import { connectAppleHealth, syncHealthWorkouts, getLastSyncTime } from "@/lib/healthSync";
 
-const DEVICE_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  apple_health: { icon: "heart", color: "#FF2D55" },
-  garmin: { icon: "watch", color: "#007DC3" },
-  strava: { icon: "bicycle", color: "#FC4C02" },
+const DEVICE_CONFIG: Record<
+  string,
+  { icon: keyof typeof Ionicons.glyphMap; color: string; gradient: string[] }
+> = {
+  apple_health: { icon: "heart", color: "#FF2D55", gradient: ["#FF2D55", "#FF6B8A"] },
+  garmin: { icon: "watch", color: "#007DC3", gradient: ["#007DC3", "#00A5E0"] },
+  strava: { icon: "bicycle", color: "#FC4C02", gradient: ["#FC4C02", "#FF7F50"] },
 };
 
 export default function ConnectedDevicesScreen() {
   const router = useRouter();
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const connectedDevices = useAppStore((s) => s.connectedDevices);
   const toggleDeviceConnection = useAppStore((s) => s.toggleDeviceConnection);
+
+  const [syncing, setSyncing] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    synced: number;
+    skipped: number;
+  } | null>(null);
+
+  const handleConnectAppleHealth = useCallback(async () => {
+    if (Platform.OS !== "ios") {
+      Alert.alert("Not Available", "Apple Health is only available on iOS devices.");
+      return;
+    }
+    setConnecting("dev-001");
+    try {
+      const result = await connectAppleHealth();
+      if (result.success) {
+        toggleDeviceConnection("dev-001");
+        Alert.alert("✅ Connected", "Apple Health connected successfully! Syncing your workouts...");
+        // Auto-sync after connecting
+        handleSyncAppleHealth();
+      } else {
+        Alert.alert("Connection Failed", result.error ?? "Could not connect to Apple Health.");
+      }
+    } catch (e) {
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setConnecting(null);
+    }
+  }, []);
+
+  const handleSyncAppleHealth = useCallback(async () => {
+    if (!currentUserId) {
+      Alert.alert("Not Logged In", "Please log in to sync workouts.");
+      return;
+    }
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await syncHealthWorkouts(currentUserId, 30);
+      setSyncResult({ synced: result.synced, skipped: result.skipped });
+
+      if (result.synced > 0) {
+        const totalPoints = result.newActivities.reduce((sum, a) => sum + a.points, 0);
+        Alert.alert(
+          "🎉 Sync Complete",
+          `Imported ${result.synced} new workout${result.synced > 1 ? "s" : ""}!\n+${totalPoints} rank points earned.`
+        );
+        // Refresh profile + activities to update points & UI
+        const store = useAppStore.getState();
+        await Promise.all([
+          store.fetchProfile(currentUserId),
+          store.fetchActivities(currentUserId),
+        ]);
+      } else if (result.skipped > 0) {
+        Alert.alert("Up to Date", "All workouts already synced. Nothing new to import.");
+      } else {
+        Alert.alert(
+          "No Workouts Found",
+          "No swim, bike, or run workouts found in the last 30 days. Go train! 💪"
+        );
+      }
+
+      const lastSyncTime = await getLastSyncTime(currentUserId);
+      setLastSync(lastSyncTime);
+    } catch (e) {
+      console.error("Sync error:", e);
+      Alert.alert("Sync Failed", "Could not sync workouts. Please try again.");
+    } finally {
+      setSyncing(false);
+    }
+  }, [currentUserId]);
+
+  const handleConnectGarmin = () => {
+    Alert.alert(
+      "Garmin Connect",
+      "Garmin integration requires OAuth setup. This will be available in a future update.\n\nIn the meantime, if your Garmin syncs to Apple Health, connect Apple Health to get your data.",
+      [
+        { text: "OK" },
+        {
+          text: "Open Garmin Connect",
+          onPress: () => Linking.openURL("https://connect.garmin.com"),
+        },
+      ]
+    );
+  };
+
+  const handleConnectStrava = () => {
+    Alert.alert(
+      "Strava",
+      "Strava integration is coming soon.\n\nIf Strava syncs to Apple Health, connect Apple Health to import your workouts.",
+      [{ text: "OK" }]
+    );
+  };
+
+  const handleDevicePress = (device: (typeof connectedDevices)[0]) => {
+    if (device.type === "apple_health") {
+      if (device.isConnected) {
+        // Already connected — offer sync or disconnect
+        Alert.alert("Apple Health", "What would you like to do?", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Sync Now",
+            onPress: handleSyncAppleHealth,
+          },
+          {
+            text: "Disconnect",
+            style: "destructive",
+            onPress: () => toggleDeviceConnection(device.id),
+          },
+        ]);
+      } else {
+        handleConnectAppleHealth();
+      }
+    } else if (device.type === "garmin") {
+      handleConnectGarmin();
+    } else if (device.type === "strava") {
+      handleConnectStrava();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -41,84 +170,135 @@ export default function ConnectedDevicesScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.description}>
-          Connect your fitness devices and apps to sync workout data automatically.
+          Connect your fitness devices to automatically import workouts and earn rank points.
         </Text>
 
+        <SectionHeader title="Available Integrations" />
+
         {connectedDevices.map((device) => {
-          const config = DEVICE_ICONS[device.type] ?? { icon: "bluetooth", color: colors.textMuted };
-          const isStrava = device.type === "strava";
+          const config = DEVICE_CONFIG[device.type];
+          const isConnecting = connecting === device.id;
 
           return (
-            <GlassCard key={device.id} style={styles.deviceCard}>
-              <View style={styles.deviceRow}>
-                <View style={[styles.deviceIcon, { backgroundColor: config.color + "15", borderColor: config.color + "30" }]}>
-                  <Ionicons name={config.icon} size={24} color={config.color} />
-                </View>
-                <View style={styles.deviceInfo}>
-                  <Text style={styles.deviceName}>{device.name}</Text>
-                  {isStrava ? (
-                    <Text style={styles.comingSoon}>Coming Soon</Text>
-                  ) : device.isConnected ? (
-                    <Text style={styles.connected}>Connected</Text>
-                  ) : (
-                    <Text style={styles.disconnected}>Not Connected</Text>
-                  )}
-                  {device.lastSync && device.isConnected && (
-                    <Text style={styles.lastSync}>
-                      Last sync: {new Date(device.lastSync).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  )}
-                </View>
-                {isStrava ? (
-                  <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonBadgeText}>SOON</Text>
+            <TouchableOpacity
+              key={device.id}
+              activeOpacity={0.7}
+              onPress={() => handleDevicePress(device)}
+            >
+              <GlassCard
+                style={[
+                  styles.deviceCard,
+                  device.isConnected && { borderColor: config.color + "40", borderWidth: 1 },
+                ]}
+              >
+                <View style={styles.deviceRow}>
+                  <View style={[styles.deviceIcon, { backgroundColor: config.color + "20" }]}>
+                    <Ionicons name={config.icon} size={24} color={config.color} />
                   </View>
-                ) : device.type === "apple_health" ? (
-                  <Switch
-                    value={device.isConnected}
-                    onValueChange={() => toggleDeviceConnection(device.id)}
-                    trackColor={{
-                      false: colors.surfaceLight,
-                      true: config.color + "60",
-                    }}
-                    thumbColor={device.isConnected ? config.color : colors.textMuted}
-                  />
-                ) : (
-                  <TouchableOpacity
-                    style={[
-                      styles.connectBtn,
-                      device.isConnected
-                        ? { backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" }
-                        : { backgroundColor: config.color + "15", borderColor: config.color + "30" },
-                    ]}
-                    onPress={() => toggleDeviceConnection(device.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.connectBtnText,
-                        { color: device.isConnected ? "#EF4444" : config.color },
-                      ]}
-                    >
-                      {device.isConnected ? "Disconnect" : "Connect"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </GlassCard>
+                  <View style={styles.deviceInfo}>
+                    <Text style={styles.deviceName}>{device.name}</Text>
+                    {device.isConnected ? (
+                      <Text style={[styles.deviceStatus, { color: colors.success }]}>
+                        ● Connected
+                      </Text>
+                    ) : (
+                      <Text style={styles.deviceStatus}>Tap to connect</Text>
+                    )}
+                    {device.isConnected && device.lastSync && (
+                      <Text style={styles.lastSyncText}>
+                        Last sync: {new Date(device.lastSync).toLocaleString()}
+                      </Text>
+                    )}
+                  </View>
+                  {isConnecting ? (
+                    <ActivityIndicator size="small" color={config.color} />
+                  ) : device.isConnected ? (
+                    <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                  ) : (
+                    <Ionicons name="add-circle-outline" size={24} color={colors.textMuted} />
+                  )}
+                </View>
+              </GlassCard>
+            </TouchableOpacity>
           );
         })}
 
+        {/* Sync button if Apple Health is connected */}
+        {connectedDevices.find((d) => d.type === "apple_health" && d.isConnected) && (
+          <>
+            <SectionHeader title="Manual Sync" />
+            <TouchableOpacity
+              style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
+              onPress={handleSyncAppleHealth}
+              disabled={syncing}
+              activeOpacity={0.8}
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="sync" size={20} color="#fff" />
+              )}
+              <Text style={styles.syncButtonText}>
+                {syncing ? "Syncing..." : "Sync Workouts Now"}
+              </Text>
+            </TouchableOpacity>
+
+            {syncResult && (
+              <GlassCard style={styles.resultCard}>
+                <Text style={styles.resultTitle}>Last Sync Result</Text>
+                <View style={styles.resultRow}>
+                  <Text style={styles.resultLabel}>New workouts imported:</Text>
+                  <Text style={[styles.resultValue, { color: colors.success }]}>
+                    {syncResult.synced}
+                  </Text>
+                </View>
+                <View style={styles.resultRow}>
+                  <Text style={styles.resultLabel}>Already synced:</Text>
+                  <Text style={styles.resultValue}>{syncResult.skipped}</Text>
+                </View>
+              </GlassCard>
+            )}
+          </>
+        )}
+
+        {/* Info card */}
+        <SectionHeader title="How It Works" />
         <GlassCard style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.infoText}>
-            Device integrations require the corresponding app to be installed on your device. 
-            Health data sync happens automatically when connected.
+          <View style={styles.infoRow}>
+            <Text style={styles.infoNumber}>1</Text>
+            <Text style={styles.infoText}>
+              Complete a workout with your watch (swim, bike, or run)
+            </Text>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoNumber}>2</Text>
+            <Text style={styles.infoText}>
+              Your watch syncs the data to Apple Health or Garmin Connect
+            </Text>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoNumber}>3</Text>
+            <Text style={styles.infoText}>
+              Iron3 imports the workout and calculates your rank points
+            </Text>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoNumber}>4</Text>
+            <Text style={styles.infoText}>
+              Your rank updates and you climb the leaderboard! 🏆
+            </Text>
+          </View>
+        </GlassCard>
+
+        {/* Garmin tip */}
+        <GlassCard style={styles.tipCard} variant="highlighted">
+          <Ionicons name="bulb-outline" size={20} color={colors.run} />
+          <Text style={styles.tipText}>
+            <Text style={{ fontWeight: fontWeight.bold }}>Garmin users: </Text>
+            Enable "Write to Apple Health" in Garmin Connect app settings (Settings → Health → Apple Health) to sync your workouts through Apple Health.
           </Text>
         </GlassCard>
       </ScrollView>
@@ -127,40 +307,28 @@ export default function ConnectedDevicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingVertical: spacing.md,
   },
   title: {
     color: colors.text,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: 32,
-    gap: 12,
-  },
+  container: { flex: 1 },
+  content: { padding: spacing.lg, gap: 12, paddingBottom: 40 },
   description: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     lineHeight: 20,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  deviceCard: {
-    padding: 14,
-  },
+  deviceCard: { gap: 0 },
   deviceRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -172,70 +340,86 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
   },
-  deviceInfo: {
-    flex: 1,
-    gap: 2,
-  },
+  deviceInfo: { flex: 1, gap: 2 },
   deviceName: {
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
   },
-  connected: {
-    color: colors.success,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-  },
-  disconnected: {
+  deviceStatus: {
     color: colors.textMuted,
     fontSize: fontSize.xs,
   },
-  comingSoon: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontStyle: "italic",
-  },
-  lastSync: {
+  lastSyncText: {
     color: colors.textMuted,
     fontSize: 10,
+    marginTop: 1,
   },
-  connectBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-  },
-  connectBtnText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-  },
-  comingSoonBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  comingSoonBadgeText: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: fontWeight.bold,
-    letterSpacing: 1,
-  },
-  infoCard: {
+  syncButton: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginTop: 8,
-    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    paddingVertical: 16,
+  },
+  syncButtonDisabled: { opacity: 0.6 },
+  syncButtonText: {
+    color: "#fff",
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+  },
+  resultCard: { gap: 8 },
+  resultTitle: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    marginBottom: 4,
+  },
+  resultRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  resultLabel: { color: colors.textSecondary, fontSize: fontSize.sm },
+  resultValue: { color: colors.text, fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  infoCard: { gap: 0, padding: 0, overflow: "hidden" },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  infoNumber: {
+    color: colors.primary,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    width: 24,
+    textAlign: "center",
   },
   infoText: {
-    flex: 1,
     color: colors.textSecondary,
-    fontSize: fontSize.xs,
-    lineHeight: 18,
+    fontSize: fontSize.sm,
+    flex: 1,
+    lineHeight: 20,
+  },
+  infoDivider: {
+    height: 1,
+    backgroundColor: colors.surfaceGlassBorder,
+    marginHorizontal: 16,
+  },
+  tipCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  tipText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    flex: 1,
+    lineHeight: 20,
   },
 });

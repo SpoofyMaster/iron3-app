@@ -32,7 +32,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundler: "metro",
     output: "static",
   },
-  plugins: ["expo-router", "expo-font"],
+  plugins: [
+    "expo-router",
+    "expo-font",
+    "expo-apple-authentication",
+    [
+      "@kingstinct/react-native-healthkit",
+      {
+        NSHealthShareUsageDescription:
+          "Iron3 reads your workout data (swim, bike, run) to calculate rank points and track your progress.",
+        NSHealthUpdateUsageDescription:
+          "Iron3 saves your workout summaries back to Apple Health.",
+        background: true,
+      },
+    ],
+  ],
   experiments: {
     typedRoutes: true,
   },

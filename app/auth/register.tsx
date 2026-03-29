@@ -10,11 +10,12 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { GlassCard } from "@/components";
-import { colors, spacing, fontSize } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing, fontSize, fontWeight, borderRadius } from "@/theme";
 import { signUp } from "@/lib/auth";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -27,6 +28,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async () => {
     if (!displayName.trim() || !email.trim() || !password) {
@@ -64,9 +66,12 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient
-      colors={["#0a0a1a", "#1a0a2e", "#0d1b3e"]}
+      colors={["#0A0A0F", "#1A0A05", "#0F0808", "#0A0A0F"]}
+      locations={[0, 0.3, 0.6, 1]}
       style={styles.container}
     >
+      <View style={styles.glowOrb} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
@@ -74,33 +79,45 @@ export default function RegisterScreen() {
         <ScrollView
           contentContainerStyle={styles.inner}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
+          {/* Logo */}
           <View style={styles.header}>
-            <Text style={styles.logo}>⚡ Iron3</Text>
-            <Text style={styles.subtitle}>Join the Ranks</Text>
+            <Image
+              source={require("@/assets/icon.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.tagline}>JOIN THE RANKS</Text>
           </View>
 
-          <GlassCard style={styles.card}>
+          {/* Register Card */}
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Create Account</Text>
+            <Text style={styles.cardSubtitle}>Start your triathlon journey</Text>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Display Name</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="person-outline" size={18} color={colors.textMuted} />
+              </View>
               <TextInput
                 style={styles.input}
-                placeholder="Your athlete name"
-                placeholderTextColor="rgba(255,255,255,0.3)"
+                placeholder="Athlete name"
+                placeholderTextColor={colors.textMuted}
                 autoCapitalize="words"
                 value={displayName}
                 onChangeText={setDisplayName}
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="mail-outline" size={18} color={colors.textMuted} />
+              </View>
               <TextInput
                 style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor="rgba(255,255,255,0.3)"
+                placeholder="Email"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -109,25 +126,39 @@ export default function RegisterScreen() {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
+              </View>
               <TextInput
                 style={styles.input}
-                placeholder="Min 6 characters"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                secureTextEntry
+                placeholder="Password (min 6 characters)"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm Password</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.textMuted} />
+              </View>
               <TextInput
                 style={styles.input}
-                placeholder="Repeat password"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                secureTextEntry
+                placeholder="Confirm password"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry={!showPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
               />
@@ -137,14 +168,39 @@ export default function RegisterScreen() {
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleRegister}
               disabled={loading}
+              activeOpacity={0.8}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
-              )}
+              <LinearGradient
+                colors={["#FF6B35", "#FF4500", "#CC3700"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.buttonGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Create Account</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
-          </GlassCard>
+
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social buttons */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
+                <Ionicons name="logo-apple" size={22} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
+                <Ionicons name="logo-google" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={styles.switchText}>
@@ -161,72 +217,138 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
+  glowOrb: {
+    position: "absolute",
+    top: "12%",
+    alignSelf: "center",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255, 69, 0, 0.08)",
+    shadowColor: "#FF4500",
+    shadowOpacity: 0.3,
+    shadowRadius: 80,
+    shadowOffset: { width: 0, height: 0 },
+  },
   inner: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 40,
   },
-  header: { alignItems: "center", marginBottom: 32 },
-  logo: {
-    fontSize: 42,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: 2,
+  header: {
+    alignItems: "center",
+    marginBottom: 24,
   },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.primary,
-    marginTop: 4,
-    fontWeight: "600",
-    letterSpacing: 1,
+  logoImage: {
+    width: 100,
+    height: 100,
+    marginBottom: 8,
   },
-  card: { paddingHorizontal: 20, paddingVertical: 28 },
+  tagline: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    letterSpacing: 4,
+    fontWeight: fontWeight.bold,
+  },
+  card: {
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    padding: 24,
+    gap: 14,
+  },
   cardTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 20,
-    textAlign: "center",
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
   },
-  inputGroup: { marginBottom: 14 },
-  label: {
+  cardSubtitle: {
     fontSize: fontSize.sm,
-    color: "rgba(255,255,255,0.6)",
-    marginBottom: 6,
-    fontWeight: "600",
+    color: colors.textMuted,
+    marginBottom: 4,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    height: 52,
+  },
+  inputIcon: {
+    paddingLeft: 16,
+    paddingRight: 4,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flex: 1,
+    paddingHorizontal: 12,
     fontSize: fontSize.md,
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    color: colors.text,
+    height: "100%",
+  },
+  eyeIcon: {
+    paddingHorizontal: 16,
+    height: "100%",
+    justifyContent: "center",
   },
   button: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
+    borderRadius: borderRadius.lg,
+    overflow: "hidden",
+    marginTop: 4,
   },
   buttonDisabled: { opacity: 0.6 },
+  buttonGradient: {
+    paddingVertical: 16,
+    alignItems: "center",
+    borderRadius: borderRadius.lg,
+  },
   buttonText: {
     color: "#fff",
     fontSize: fontSize.md,
-    fontWeight: "700",
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
+  dividerText: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  socialRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 16,
+  },
+  socialBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   switchText: {
-    color: "rgba(255,255,255,0.5)",
+    color: colors.textMuted,
     textAlign: "center",
     marginTop: 24,
     fontSize: fontSize.sm,
   },
   switchLink: {
     color: colors.primary,
-    fontWeight: "700",
+    fontWeight: fontWeight.bold,
   },
 });

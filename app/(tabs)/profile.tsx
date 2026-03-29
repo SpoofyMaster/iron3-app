@@ -74,13 +74,13 @@ export default function ProfileScreen() {
       const mimeType = ext === "png" ? "image/png" : "image/jpeg";
       const path = `${currentUserId}/avatar.${ext}`;
 
-      // Fetch the image as a blob (works in React Native)
+      // Read the image as arraybuffer (blob can be 0 bytes in React Native)
       const response = await fetch(asset.uri);
-      const blob = await response.blob();
+      const arrayBuffer = await response.arrayBuffer();
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, blob, { upsert: true, contentType: mimeType });
+        .upload(path, arrayBuffer, { upsert: true, contentType: mimeType });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
@@ -172,7 +172,7 @@ export default function ProfileScreen() {
         {/* Week Header */}
         <View style={styles.weekHeader}>
           <Text style={styles.weekLabel}>{weekLabel}</Text>
-          <TouchableOpacity activeOpacity={0.7}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/settings/weekly-report")}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
@@ -261,13 +261,13 @@ export default function ProfileScreen() {
           <SettingsRow
             icon="person-outline"
             label="Edit Profile"
-            onPress={() => {}}
+            onPress={() => router.push("/settings/edit-profile")}
           />
           <View style={styles.settingsDivider} />
           <SettingsRow
             icon="notifications-outline"
             label="Notifications"
-            onPress={() => {}}
+            onPress={() => router.push("/settings/notifications")}
           />
           <View style={styles.settingsDivider} />
           <SettingsRow
@@ -285,7 +285,7 @@ export default function ProfileScreen() {
           <SettingsRow
             icon="analytics-outline"
             label="Units & Preferences"
-            onPress={() => {}}
+            onPress={() => router.push("/settings/units")}
           />
           <View style={styles.settingsDivider} />
           <View style={styles.settingsRow}>
@@ -317,13 +317,13 @@ export default function ProfileScreen() {
           <SettingsRow
             icon="help-circle-outline"
             label="Help & Support"
-            onPress={() => {}}
+            onPress={() => router.push("/settings/help")}
           />
           <View style={styles.settingsDivider} />
           <SettingsRow
             icon="document-text-outline"
             label="Privacy Policy"
-            onPress={() => {}}
+            onPress={() => router.push("/settings/privacy")}
           />
           <View style={styles.settingsDivider} />
           <SettingsRow

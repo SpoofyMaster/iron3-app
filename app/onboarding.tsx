@@ -8,6 +8,7 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -185,24 +186,29 @@ export default function OnboardingScreen() {
         >
           {step === 0 && (
             <View style={styles.stepContent}>
-              <View style={styles.welcomeIcon}>
-                <Text style={styles.welcomeEmoji}>🏊‍♂️🚴‍♂️🏃‍♂️</Text>
-              </View>
+              <Image
+                source={require("@/assets/icon.png")}
+                style={{ width: 120, height: 120, alignSelf: "center", marginBottom: 8 }}
+                resizeMode="contain"
+              />
               <Text style={styles.stepTitle}>Welcome to Iron3</Text>
+              <Text style={[styles.stepDesc, { letterSpacing: 2, color: colors.primary, fontWeight: "600", marginBottom: 16 }]}>
+                KNOW YOUR RANK
+              </Text>
               <Text style={styles.stepDesc}>
                 The gamified triathlon experience. Track your swim, bike, and run
                 activities, earn points, climb the ranks, and compete with athletes worldwide.
               </Text>
               <View style={styles.featureList}>
                 {[
-                  "Earn XP across three disciplines",
-                  "Climb from Iron to Legendary rank",
-                  "Compete on global leaderboards",
-                  "Track personal bests & progress",
+                  { icon: "flash" as const, text: "Earn XP across three disciplines", color: colors.run },
+                  { icon: "trophy" as const, text: "Climb from Iron to Legendary rank", color: colors.accentGold },
+                  { icon: "globe" as const, text: "Compete on global leaderboards", color: colors.swim },
+                  { icon: "trending-up" as const, text: "Track personal bests & progress", color: colors.bike },
                 ].map((feat, i) => (
                   <View key={i} style={styles.featureRow}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <Text style={styles.featureText}>{feat}</Text>
+                    <Ionicons name={feat.icon} size={20} color={feat.color} />
+                    <Text style={styles.featureText}>{feat.text}</Text>
                   </View>
                 ))}
               </View>

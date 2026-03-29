@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Image } from "react-native";
 import { colors } from "@/theme";
 import { useAppStore } from "@/store/useAppStore";
 import { getSession, onAuthStateChange } from "@/lib/auth";
+import { useAutoSync } from "@/lib/useAutoSync";
+import * as WebBrowser from "expo-web-browser";
+
+// Required for expo-auth-session on iOS
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RootLayout() {
   const router = useRouter();
@@ -15,6 +20,9 @@ export default function RootLayout() {
   const hasCompletedOnboarding = useAppStore((s) => s.hasCompletedOnboarding);
   const setAuth = useAppStore((s) => s.setAuth);
 
+  // Auto-sync Apple Health workouts when app opens
+  useAutoSync();
+
   // Check existing session on mount
   useEffect(() => {
     const checkSession = async () => {
@@ -22,6 +30,12 @@ export default function RootLayout() {
         const session = await getSession();
         if (session?.user) {
           setAuth(true, session.user.id);
+          const store = useAppStore.getState();
+          // Fetch real profile + activities from Supabase
+          await Promise.all([
+            store.fetchProfile(session.user.id),
+            store.fetchActivities(session.user.id),
+          ]);
         }
       } catch {
         // Supabase not configured yet — stay in mock/dev mode
@@ -38,6 +52,9 @@ export default function RootLayout() {
     const unsubscribe = onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
         setAuth(true, session.user.id);
+        const store = useAppStore.getState();
+        store.fetchProfile(session.user.id);
+        store.fetchActivities(session.user.id);
       } else if (event === "SIGNED_OUT") {
         setAuth(false);
       }
@@ -52,7 +69,7 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === ("auth" as string);
 
     if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/auth/login" as never);
+      router.replace("/auth/welcome" as never);
     } else if (isAuthenticated && inAuthGroup) {
       if (!hasCompletedOnboarding) {
         router.replace("/onboarding");
@@ -67,7 +84,11 @@ export default function RootLayout() {
     return (
       <View style={styles.loading}>
         <StatusBar style="light" />
-        <ActivityIndicator size="large" color={colors.primary} />
+        <Image
+          source={require("@/assets/icon.png")}
+          style={{ width: 80, height: 80 }}
+          resizeMode="contain"
+        />
       </View>
     );
   }
@@ -83,6 +104,10 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="splash-animation"
+          options={{ animation: "none", gestureEnabled: false }}
+        />
         <Stack.Screen
           name="auth"
           options={{ animation: "fade", gestureEnabled: false }}

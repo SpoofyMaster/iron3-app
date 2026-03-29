@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +24,7 @@ import {
   GradientBackground,
   LevelStreakBar,
 } from "@/components";
-import { LeaderboardFilter, LeaderboardScope, LeaderboardTab } from "@/types";
+import { LeaderboardFilter, LeaderboardScope, LeaderboardTab, FriendLeaderboardEntry } from "@/types";
 import { getTriRank, getRankForPoints, formatPoints } from "@/lib/ranks";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { getGlowStyle, getRankGradient } from "@/lib/effects";
@@ -41,6 +42,36 @@ const TAB_OPTIONS: { key: LeaderboardTab; label: string }[] = [
   { key: "local", label: "LOCAL" },
 ];
 
+const DISTANCE_OPTIONS = ["5 KM", "10 KM", "21 KM", "42 KM", "All"];
+
+// Mock global leaderboard (different people, higher points)
+const GLOBAL_LEADERBOARD: FriendLeaderboardEntry[] = [
+  { rank: 1, userId: "g-001", displayName: "Tom Fischer", avatarUrl: null, points: 28400, tier: "Legendary", tierColor: "#FF4500", isFriend: false, avatarLetter: "T" },
+  { rank: 2, userId: "g-002", displayName: "Anja Berger", avatarUrl: null, points: 25100, tier: "Elite", tierColor: "#80ED99", isFriend: false, avatarLetter: "A" },
+  { rank: 3, userId: "g-003", displayName: "Yuki Tanaka", avatarUrl: null, points: 23600, tier: "Elite", tierColor: "#80ED99", isFriend: false, avatarLetter: "Y" },
+  { rank: 4, userId: "g-004", displayName: "Ryan O'Brien", avatarUrl: null, points: 21200, tier: "Diamond", tierColor: "#22D3EE", isFriend: false, avatarLetter: "R" },
+  { rank: 5, userId: "g-005", displayName: "Sofia Costa", avatarUrl: null, points: 19800, tier: "Diamond", tierColor: "#22D3EE", isFriend: false, avatarLetter: "S" },
+  { rank: 6, userId: "g-006", displayName: "Liam Carter", avatarUrl: null, points: 18500, tier: "Diamond", tierColor: "#22D3EE", isFriend: false, avatarLetter: "L" },
+  { rank: 7, userId: "u-020", displayName: "Marcus Chen", avatarUrl: null, points: 15200, tier: "Diamond", tierColor: "#22D3EE", isFriend: true, avatarLetter: "M" },
+  { rank: 8, userId: "g-007", displayName: "Nina Volkov", avatarUrl: null, points: 14200, tier: "Platinum", tierColor: "#818CF8", isFriend: false, avatarLetter: "N" },
+  { rank: 9, userId: "g-008", displayName: "Omar Hassan", avatarUrl: null, points: 12900, tier: "Platinum", tierColor: "#818CF8", isFriend: false, avatarLetter: "O" },
+  { rank: 10, userId: "user-001", displayName: "Alex Rivera", avatarUrl: null, points: 4350, tier: "Silver", tierColor: "#94A3B8", isFriend: false, avatarLetter: "A" },
+];
+
+// Mock local leaderboard (nearby athletes)
+const LOCAL_LEADERBOARD: FriendLeaderboardEntry[] = [
+  { rank: 1, userId: "l-001", displayName: "Carlos Mendoza", avatarUrl: null, points: 13800, tier: "Platinum", tierColor: "#818CF8", isFriend: false, avatarLetter: "C" },
+  { rank: 2, userId: "l-002", displayName: "Isabella Rossi", avatarUrl: null, points: 11200, tier: "Platinum", tierColor: "#818CF8", isFriend: false, avatarLetter: "I" },
+  { rank: 3, userId: "l-003", displayName: "Mehdi Alaoui", avatarUrl: null, points: 9400, tier: "Gold", tierColor: "#F59E0B", isFriend: false, avatarLetter: "M" },
+  { rank: 4, userId: "u-024", displayName: "Kai Nakamura", avatarUrl: null, points: 8650, tier: "Gold", tierColor: "#F59E0B", isFriend: true, avatarLetter: "K" },
+  { rank: 5, userId: "l-004", displayName: "Amina Benziane", avatarUrl: null, points: 7200, tier: "Gold", tierColor: "#F59E0B", isFriend: false, avatarLetter: "A" },
+  { rank: 6, userId: "l-005", displayName: "Lucas Martin", avatarUrl: null, points: 5800, tier: "Silver", tierColor: "#94A3B8", isFriend: false, avatarLetter: "L" },
+  { rank: 7, userId: "user-001", displayName: "Alex Rivera", avatarUrl: null, points: 4350, tier: "Silver", tierColor: "#94A3B8", isFriend: false, avatarLetter: "A" },
+  { rank: 8, userId: "l-006", displayName: "Fatima El Idrissi", avatarUrl: null, points: 3900, tier: "Silver", tierColor: "#94A3B8", isFriend: false, avatarLetter: "F" },
+  { rank: 9, userId: "l-007", displayName: "Nour Tazi", avatarUrl: null, points: 2600, tier: "Bronze", tierColor: "#D97706", isFriend: false, avatarLetter: "N" },
+  { rank: 10, userId: "l-008", displayName: "Youssef Benhaddou", avatarUrl: null, points: 1800, tier: "Bronze", tierColor: "#CD7F32", isFriend: false, avatarLetter: "Y" },
+];
+
 export default function RanksScreen() {
   const router = useRouter();
   const swimPoints = useAppStore((s) => s.swimPoints);
@@ -54,11 +85,23 @@ export default function RanksScreen() {
   const setLeaderboardTab = useAppStore((s) => s.setFriendsLeaderboardTab);
 
   const [lbFilter, setLbFilter] = useState<LeaderboardFilter>("overall");
+  const [selectedDistance, setSelectedDistance] = useState("10 KM");
+  const [showDistancePicker, setShowDistancePicker] = useState(false);
 
   const rankInfo = useMemo(() => getRankForPoints(triRank.overallPoints), [triRank.overallPoints]);
 
-  const topThree = friendsLeaderboard.slice(0, 3);
-  const rest = isPremium ? friendsLeaderboard.slice(3) : friendsLeaderboard.slice(3, 6);
+  // Select leaderboard data based on active tab
+  const currentLeaderboard = useMemo(() => {
+    switch (leaderboardTab) {
+      case "global": return GLOBAL_LEADERBOARD;
+      case "local": return LOCAL_LEADERBOARD;
+      case "friends":
+      default: return friendsLeaderboard;
+    }
+  }, [leaderboardTab, friendsLeaderboard]);
+
+  const topThree = currentLeaderboard.slice(0, 3);
+  const rest = isPremium ? currentLeaderboard.slice(3) : currentLeaderboard.slice(3, 6);
 
   const PODIUM_CONFIG = [
     { idx: 1, size: 44, ringColor: "#94A3B8", label: "silver", glowOpacity: 0.4 },
@@ -94,12 +137,14 @@ export default function RanksScreen() {
         </View>
 
         {/* Distance filter */}
-        <View style={styles.distFilterRow}>
-          <Text style={styles.distFilter}>10 KM</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Ionicons name="settings-outline" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.distFilterRow}
+          onPress={() => setShowDistancePicker(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.distFilter}>{selectedDistance}</Text>
+          <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
 
         {/* Podium Section */}
         {topThree.length >= 3 && (
@@ -191,6 +236,43 @@ export default function RanksScreen() {
           </GlassCard>
         )}
       </ScrollView>
+
+      {/* Distance Picker Modal */}
+      <Modal
+        visible={showDistancePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDistancePicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDistancePicker(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Distance</Text>
+            {DISTANCE_OPTIONS.map((option) => {
+              const active = selectedDistance === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.modalOption, active && styles.modalOptionActive]}
+                  onPress={() => {
+                    setSelectedDistance(option);
+                    setShowDistancePicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.modalOptionText, active && styles.modalOptionTextActive]}>
+                    {option}
+                  </Text>
+                  {active && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -359,5 +441,49 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     textAlign: "center",
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    width: "100%",
+    maxWidth: 320,
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+    gap: 4,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: borderRadius.md,
+  },
+  modalOptionActive: {
+    backgroundColor: colors.primary + "15",
+  },
+  modalOptionText: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+  },
+  modalOptionTextActive: {
+    color: colors.primary,
+    fontWeight: fontWeight.bold,
   },
 });
