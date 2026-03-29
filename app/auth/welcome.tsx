@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
-  Platform,
   Alert,
   ActivityIndicator,
   Image,
@@ -21,13 +20,19 @@ import { useAppStore } from "@/store/useAppStore";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-// Triathlon hero images — cycling through swim/bike/run vibes
-// Using a placeholder color gradient as background since we don't have
-// a real photo asset; the structure supports swapping in a real photo.
-const HERO_SLIDES = [
-  { label: "SWIM", color: "#0A1628" },
-  { label: "BIKE", color: "#0F0A08" },
-  { label: "RUN",  color: "#0A0A0F" },
+const SLIDES = [
+  {
+    image: require("@/assets/hero-swim.png"),
+    label: "SWIM",
+  },
+  {
+    image: require("@/assets/hero-bike.png"),
+    label: "BIKE",
+  },
+  {
+    image: require("@/assets/hero-run.png"),
+    label: "RUN",
+  },
 ];
 
 export default function WelcomeScreen() {
@@ -38,43 +43,45 @@ export default function WelcomeScreen() {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
+  const [nextIdx, setNextIdx] = useState(1);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUp = useRef(new Animated.Value(40)).current;
-  const bgOpacity = useRef(new Animated.Value(1)).current;
+  // Fade values for cross-dissolve between slides
+  const currentFade = useRef(new Animated.Value(1)).current;
+  const nextFade    = useRef(new Animated.Value(0)).current;
 
-  // Check Apple availability
+  // Entrance animation
+  const contentY    = useRef(new Animated.Value(30)).current;
+  const contentOp   = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
   }, []);
 
-  // Entrance animation
+  // Entrance
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideUp, {
-        toValue: 0,
-        duration: 700,
-        useNativeDriver: true,
-      }),
+      Animated.timing(contentOp, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(contentY, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
   }, []);
 
-  // Background slide cycle
+  // Background cross-dissolve cycle
   useEffect(() => {
     const interval = setInterval(() => {
+      const next = (slideIdx + 1) % SLIDES.length;
+      setNextIdx(next);
+      nextFade.setValue(0);
+
       Animated.sequence([
-        Animated.timing(bgOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
-        Animated.timing(bgOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ]).start();
-      setTimeout(() => setSlideIdx(i => (i + 1) % HERO_SLIDES.length), 600);
-    }, 4000);
+        Animated.timing(nextFade, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ]).start(() => {
+        currentFade.setValue(1);
+        nextFade.setValue(0);
+        setSlideIdx(next);
+      });
+    }, 4500);
     return () => clearInterval(interval);
-  }, []);
+  }, [slideIdx]);
 
   const handleApple = async () => {
     setLoadingApple(true);
@@ -100,36 +107,39 @@ export default function WelcomeScreen() {
     }
   };
 
-  const slide = HERO_SLIDES[slideIdx];
-
   return (
     <View style={styles.container}>
-      {/* ── Hero Background ── */}
-      <Animated.View style={[styles.heroBg, { opacity: bgOpacity }]}>
-        <LinearGradient
-          colors={[slide.color, "#1A0A05", "#0A0A0F"]}
-          locations={[0, 0.5, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Athlete silhouette overlay — subtle texture */}
-        <View style={styles.heroAthleteOverlay} />
-      </Animated.View>
+      {/* ── Hero photo background — current slide ── */}
+      <Animated.Image
+        source={SLIDES[slideIdx].image}
+        style={[styles.heroBg, { opacity: currentFade }]}
+        resizeMode="cover"
+      />
+      {/* ── Hero photo background — next slide (fading in) ── */}
+      <Animated.Image
+        source={SLIDES[nextIdx].image}
+        style={[styles.heroBg, { opacity: nextFade }]}
+        resizeMode="cover"
+      />
 
-      {/* ── Dark gradient bottom overlay (for text legibility) ── */}
+      {/* ── Dark gradient — heavy at bottom for text, subtle at top ── */}
       <LinearGradient
-        colors={["transparent", "rgba(10,10,15,0.6)", "rgba(10,10,15,0.97)"]}
-        locations={[0.25, 0.55, 1]}
+        colors={[
+          "rgba(0,0,0,0.15)",
+          "rgba(0,0,0,0.05)",
+          "rgba(0,0,0,0.35)",
+          "rgba(10,10,15,0.88)",
+          "rgba(10,10,15,0.98)",
+        ]}
+        locations={[0, 0.2, 0.45, 0.7, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
 
-      {/* ── Discipline indicator dots ── */}
+      {/* ── Slide indicator dots ── */}
       <View style={styles.dots}>
-        {HERO_SLIDES.map((s, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === slideIdx && styles.dotActive]}
-          />
+        {SLIDES.map((_, i) => (
+          <View key={i} style={[styles.dot, i === slideIdx && styles.dotActive]} />
         ))}
       </View>
 
@@ -137,10 +147,10 @@ export default function WelcomeScreen() {
       <Animated.View
         style={[
           styles.content,
-          { opacity: fadeAnim, transform: [{ translateY: slideUp }] },
+          { opacity: contentOp, transform: [{ translateY: contentY }] },
         ]}
       >
-        {/* Brand */}
+        {/* Brand row */}
         <View style={styles.brand}>
           <Image
             source={require("@/assets/icon.png")}
@@ -150,15 +160,17 @@ export default function WelcomeScreen() {
           <Text style={styles.brandName}>IRON3</Text>
         </View>
 
-        {/* Headline */}
-        <Text style={styles.headline}>TRAIN LIKE{"\n"}A CHAMPION</Text>
+        {/* Headline — bold italic condensed like screenshot */}
+        <Text style={styles.headline}>{"TRAIN LIKE\nA CHAMPION"}</Text>
+
+        {/* Subtext */}
         <Text style={styles.sub}>
-          Track swim, bike & run. Earn your rank.{"\n"}Compete with the best.
+          {"Track swim, bike & run. Earn your rank.\nCompete with the best."}
         </Text>
 
         {/* ── Auth buttons ── */}
         <View style={styles.authButtons}>
-          {/* Apple Sign In */}
+          {/* Apple */}
           {appleAvailable && (
             <TouchableOpacity
               style={styles.appleBtn}
@@ -170,14 +182,14 @@ export default function WelcomeScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="logo-apple" size={20} color="#fff" />
-                  <Text style={styles.appleBtnText}>Continue with Apple</Text>
+                  <Ionicons name="logo-apple" size={21} color="#fff" />
+                  <Text style={styles.btnText}>Continue with Apple</Text>
                 </>
               )}
             </TouchableOpacity>
           )}
 
-          {/* Google Sign In */}
+          {/* Google */}
           <TouchableOpacity
             style={styles.googleBtn}
             onPress={handleGoogle}
@@ -188,13 +200,14 @@ export default function WelcomeScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="logo-google" size={18} color="#fff" />
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
+                {/* Google "G" icon as text since Ionicons doesn't have official G */}
+                <Text style={styles.gIcon}>G</Text>
+                <Text style={styles.btnText}>Continue with Google</Text>
               </>
             )}
           </TouchableOpacity>
 
-          {/* Email fallback */}
+          {/* Email */}
           <TouchableOpacity
             style={styles.emailBtn}
             onPress={() => router.push("/auth/login" as never)}
@@ -206,9 +219,9 @@ export default function WelcomeScreen() {
 
         {/* Legal */}
         <Text style={styles.legal}>
-          By continuing you agree to our{" "}
+          {"By continuing you agree to our "}
           <Text style={styles.legalLink}>Terms of Service</Text>
-          {" "}and{" "}
+          {" and "}
           <Text style={styles.legalLink}>Privacy Policy</Text>
         </Text>
       </Animated.View>
@@ -222,80 +235,77 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A0A0F",
   },
   heroBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroAthleteOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
-    right: 0,
-    // Decorative triathlon grid lines — gives a sporty data-viz feel
-    height: H * 0.65,
-    opacity: 0.04,
-    backgroundColor: "transparent",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#FF6B35",
+    width: W,
+    height: H,
   },
   dots: {
     position: "absolute",
-    top: 60,
+    top: 56,
     alignSelf: "center",
     flexDirection: "row",
-    gap: 6,
+    gap: 7,
   },
   dot: {
-    width: 5,
-    height: 5,
+    width: 6,
+    height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.25)",
   },
   dotActive: {
     backgroundColor: colors.primary,
-    width: 18,
+    width: 22,
+    borderRadius: 3,
   },
   content: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 28,
-    paddingBottom: 48,
-    gap: 0,
+    paddingHorizontal: 24,
+    paddingBottom: 44,
   },
   brand: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   brandLogo: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
   },
   brandName: {
     fontSize: 13,
-    fontWeight: fontWeight.extrabold,
+    fontWeight: "900",
     color: colors.primary,
     letterSpacing: 4,
   },
+  // Bold italic heavy condensed — matching screenshot style
   headline: {
-    fontSize: 42,
+    fontSize: 52,
     fontWeight: "900",
+    fontStyle: "italic",
     color: "#FFFFFF",
-    lineHeight: 46,
-    letterSpacing: -0.5,
-    marginBottom: 12,
+    lineHeight: 54,
+    letterSpacing: -1,
+    marginBottom: 14,
+    textTransform: "uppercase",
   },
   sub: {
-    fontSize: fontSize.sm,
+    fontSize: 14,
+    fontWeight: "400",
     color: "rgba(255,255,255,0.55)",
-    lineHeight: 20,
-    marginBottom: 32,
+    lineHeight: 21,
+    marginBottom: 30,
   },
   authButtons: {
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 18,
   },
+  // Apple — pure black
   appleBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -303,45 +313,47 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: "#000000",
     borderRadius: 14,
-    height: 56,
+    height: 58,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  appleBtnText: {
-    color: "#fff",
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: 0.2,
-  },
+  // Google — dark glass
   googleBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    height: 56,
+    height: 58,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.07)",
   },
-  googleBtnText: {
+  btnText: {
     color: "#fff",
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: 0.2,
+    fontSize: 16,
+    fontWeight: "600",
+    letterSpacing: 0.1,
   },
+  gIcon: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    fontStyle: "italic",
+  },
+  // Email — plain text link, same level as screenshot
   emailBtn: {
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   emailBtnText: {
-    color: "rgba(255,255,255,0.45)",
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 15,
+    fontWeight: "500",
   },
   legal: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.28)",
+    color: "rgba(255,255,255,0.3)",
     textAlign: "center",
     lineHeight: 17,
   },

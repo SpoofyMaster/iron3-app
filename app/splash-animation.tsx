@@ -9,143 +9,93 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-const { width: W, height: H } = Dimensions.get("window");
-const LOGO_SIZE = W * 0.55;
+const { width: W } = Dimensions.get("window");
+const LOGO_SIZE = W * 0.45;
 
 export default function SplashAnimationScreen() {
   const router = useRouter();
 
-  // Animation values
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.82)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
-  const glowScale = useRef(new Animated.Value(0.6)).current;
-  const outerGlowOpacity = useRef(new Animated.Value(0)).current;
+  const opacity      = useRef(new Animated.Value(0)).current;
+  const scale        = useRef(new Animated.Value(0.7)).current;
+  const glowOpacity  = useRef(new Animated.Value(0)).current;
+  const glowScale    = useRef(new Animated.Value(0.5)).current;
+  const exitOpacity  = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Sequence: fade+scale in → glow pulse → hold → fade out → navigate
     Animated.sequence([
-      // 1. Logo appears with scale
+      // 1. Very fast appearance — logo bursts in (like Kotcha bird flash)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 700,
-          easing: Easing.out(Easing.cubic),
+          duration: 220,
+          easing: Easing.out(Easing.exp),
           useNativeDriver: true,
         }),
         Animated.spring(scale, {
-          toValue: 1,
-          tension: 60,
-          friction: 8,
+          toValue: 1.08,
+          tension: 180,
+          friction: 6,
           useNativeDriver: true,
         }),
         Animated.timing(glowOpacity, {
-          toValue: 0.85,
-          duration: 900,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowScale, {
           toValue: 1,
-          duration: 900,
+          duration: 300,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowScale, {
+          toValue: 1.2,
+          duration: 350,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
       ]),
-      // 2. Outer glow blooms
+      // 2. Settle back to normal scale
+      Animated.spring(scale, {
+        toValue: 1,
+        tension: 120,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      // 3. Brief hold — let the glow breathe
+      Animated.delay(350),
+      // 4. Quick fade out everything
       Animated.parallel([
-        Animated.timing(outerGlowOpacity, {
-          toValue: 0.5,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowScale, {
-          toValue: 1.15,
-          duration: 600,
-          easing: Easing.inOut(Easing.sine),
-          useNativeDriver: true,
-        }),
-      ]),
-      // 3. Breathe pulse
-      Animated.parallel([
-        Animated.timing(glowScale, {
-          toValue: 0.95,
-          duration: 700,
-          easing: Easing.inOut(Easing.sine),
-          useNativeDriver: true,
-        }),
-        Animated.timing(outerGlowOpacity, {
-          toValue: 0.25,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ]),
-      // 4. Hold
-      Animated.delay(400),
-      // 5. Fade out everything
-      Animated.parallel([
-        Animated.timing(opacity, {
+        Animated.timing(exitOpacity, {
           toValue: 0,
-          duration: 500,
+          duration: 350,
           easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowOpacity, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(outerGlowOpacity, {
-          toValue: 0,
-          duration: 400,
           useNativeDriver: true,
         }),
       ]),
     ]).start(() => {
-      // Navigate to welcome/auth
       router.replace("/auth/welcome" as never);
     });
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* Outer ambient glow */}
+    <Animated.View style={[styles.container, { opacity: exitOpacity }]}>
+      {/* Outer ambient glow ring */}
       <Animated.View
         style={[
           styles.outerGlow,
-          {
-            opacity: outerGlowOpacity,
-            transform: [{ scale: glowScale }],
-          },
+          { opacity: glowOpacity, transform: [{ scale: glowScale }] },
         ]}
       />
-      {/* Inner core glow */}
+      {/* Inner hot glow */}
       <Animated.View
         style={[
           styles.innerGlow,
-          {
-            opacity: glowOpacity,
-            transform: [{ scale: glowScale }],
-          },
+          { opacity: glowOpacity, transform: [{ scale: glowScale }] },
         ]}
       />
       {/* Logo */}
-      <Animated.View
-        style={[
-          styles.logoWrap,
-          {
-            opacity,
-            transform: [{ scale }],
-          },
-        ]}
-      >
-        <Image
-          source={require("@/assets/icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </Animated.View>
-    </View>
+      <Animated.Image
+        source={require("@/assets/icon.png")}
+        style={[styles.logo, { opacity, transform: [{ scale }] }]}
+        resizeMode="contain"
+      />
+    </Animated.View>
   );
 }
 
@@ -158,32 +108,25 @@ const styles = StyleSheet.create({
   },
   outerGlow: {
     position: "absolute",
-    width: LOGO_SIZE * 2.2,
-    height: LOGO_SIZE * 2.2,
-    borderRadius: LOGO_SIZE * 1.1,
-    backgroundColor: "transparent",
+    width: LOGO_SIZE * 2.4,
+    height: LOGO_SIZE * 2.4,
+    borderRadius: LOGO_SIZE * 1.2,
+    backgroundColor: "rgba(255, 80, 10, 0.07)",
     shadowColor: "#FF4500",
     shadowOpacity: 1,
-    shadowRadius: 120,
+    shadowRadius: 100,
     shadowOffset: { width: 0, height: 0 },
-    // Fallback glow for shadow-less contexts:
-    // We layer a soft radial using a semi-transparent background
-    backgroundColor: "rgba(255, 69, 0, 0.04)",
   },
   innerGlow: {
     position: "absolute",
-    width: LOGO_SIZE * 1.3,
-    height: LOGO_SIZE * 1.3,
-    borderRadius: LOGO_SIZE * 0.65,
-    backgroundColor: "rgba(255, 120, 30, 0.18)",
+    width: LOGO_SIZE * 1.4,
+    height: LOGO_SIZE * 1.4,
+    borderRadius: LOGO_SIZE * 0.7,
+    backgroundColor: "rgba(255, 110, 30, 0.22)",
     shadowColor: "#FF6B35",
     shadowOpacity: 1,
-    shadowRadius: 60,
+    shadowRadius: 55,
     shadowOffset: { width: 0, height: 0 },
-  },
-  logoWrap: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   logo: {
     width: LOGO_SIZE,
