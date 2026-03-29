@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator, StyleSheet, Image } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { colors } from "@/theme";
 import { useAppStore } from "@/store/useAppStore";
 import { getSession, onAuthStateChange } from "@/lib/auth";
@@ -79,16 +79,11 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, hasCompletedOnboarding, segments, initializing, router]);
 
-  // Show loading splash while checking auth
+  // Show clean dark screen while checking auth
   if (initializing) {
     return (
       <View style={styles.loading}>
         <StatusBar style="light" />
-        <Image
-          source={require("@/assets/icon.png")}
-          style={{ width: 80, height: 80 }}
-          resizeMode="contain"
-        />
       </View>
     );
   }
@@ -104,10 +99,6 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="splash-animation"
-          options={{ animation: "none", gestureEnabled: false }}
-        />
         <Stack.Screen
           name="auth"
           options={{ animation: "fade", gestureEnabled: false }}
