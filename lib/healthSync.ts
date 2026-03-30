@@ -5,7 +5,7 @@ import {
   fetchRecentWorkouts,
   calculatePoints,
   HealthWorkoutData,
-} from "./healthKit";
+} from "./healthkit";
 
 export interface SyncResult {
   synced: number;

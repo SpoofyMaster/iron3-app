@@ -39,6 +39,7 @@ const DISCIPLINE_COLORS: Record<string, string> = {
   swim: colors.swim,
   bike: "#EC4899",
   run: "#F97316",
+  brick: "#F97316",
 };
 
 const DISCIPLINE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -46,6 +47,15 @@ const DISCIPLINE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   bike: "bicycle",
   run: "walk",
   rest: "bed-outline",
+  brick: "flash",
+};
+
+const PREP_DAY_TO_WEEKDAY: Record<string, number> = {
+  Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0,
+};
+
+const PREP_DAY_TO_MONDAY_IDX: Record<string, number> = {
+  Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6,
 };
 
 export default function HomeScreen() {
@@ -62,6 +72,8 @@ export default function HomeScreen() {
   const raceGoal = useAppStore((s) => s.raceGoal);
   const milestones = useAppStore((s) => s.milestones);
   const trainingPlan = useAppStore((s) => s.trainingPlan);
+  const prepPlan = useAppStore((s) => s.prepPlan);
+  const markPrepSessionComplete = useAppStore((s) => s.markPrepSessionComplete);
 
   const recentActivities = useMemo(() => activities.slice(0, 5), [activities]);
 
@@ -114,13 +126,44 @@ export default function HomeScreen() {
   const todayIdx = new Date().getDay();
   const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const todayName = dayNames[todayIdx];
+  const prepDayNames: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  const todayPrepDay = prepDayNames[todayIdx];
   const todayWorkout = useMemo(
-    () => trainingPlan.weeklyPlan.find((w) => w.day === todayName),
-    [trainingPlan, todayName]
+    () => {
+      if (prepPlan && prepPlan.weeks.length > 0) {
+        const week = prepPlan.weeks[prepPlan.currentWeekIndex];
+        const session = week?.sessions.find((s) => s.day === todayPrepDay);
+        if (session) {
+          return {
+            day: todayName,
+            discipline: session.discipline as string,
+            title: session.notes,
+            duration: session.durationMin,
+            distance: session.distanceTarget ?? null,
+            completed: session.completed,
+          };
+        }
+        return undefined;
+      }
+      return trainingPlan.weeklyPlan.find((w) => w.day === todayName);
+    },
+    [prepPlan, trainingPlan, todayName, todayPrepDay]
   );
 
   // Training plan progress rings data
   const planProgress = useMemo(() => {
+    if (prepPlan && prepPlan.weeks.length > 0) {
+      const sessions = prepPlan.weeks[prepPlan.currentWeekIndex]?.sessions ?? [];
+      const swimPlanned = sessions.filter((s) => s.discipline === "swim").reduce((sum, s) => sum + s.durationMin, 0);
+      const swimDone = sessions.filter((s) => s.discipline === "swim" && s.completed).reduce((sum, s) => sum + s.durationMin, 0);
+      const bikePlanned = sessions.filter((s) => s.discipline === "bike").reduce((sum, s) => sum + s.durationMin, 0);
+      const bikeDone = sessions.filter((s) => s.discipline === "bike" && s.completed).reduce((sum, s) => sum + s.durationMin, 0);
+      const runPlanned = sessions.filter((s) => s.discipline === "run").reduce((sum, s) => sum + s.durationMin, 0);
+      const runDone = sessions.filter((s) => s.discipline === "run" && s.completed).reduce((sum, s) => sum + s.durationMin, 0);
+      const totalPlanned = swimPlanned + bikePlanned + runPlanned;
+      const totalDone = swimDone + bikeDone + runDone;
+      return { swimPlanned, swimDone, bikePlanned, bikeDone, runPlanned, runDone, totalPlanned, totalDone };
+    }
     const plan = trainingPlan.weeklyPlan;
     const swimPlanned = plan.filter((w) => w.discipline === "swim").reduce((sum, w) => sum + w.duration, 0);
     const swimDone = plan.filter((w) => w.discipline === "swim" && w.completed).reduce((sum, w) => sum + (w.actualDuration ?? w.duration), 0);
@@ -131,7 +174,7 @@ export default function HomeScreen() {
     const totalPlanned = swimPlanned + bikePlanned + runPlanned;
     const totalDone = swimDone + bikeDone + runDone;
     return { swimPlanned, swimDone, bikePlanned, bikeDone, runPlanned, runDone, totalPlanned, totalDone };
-  }, [trainingPlan]);
+  }, [prepPlan, trainingPlan]);
 
   const formatMinToHrMin = (min: number) => {
     const h = Math.floor(min / 60);
@@ -226,7 +269,13 @@ export default function HomeScreen() {
         <TargetRaceCard />
 
         {/* Training Plan Progress Rings */}
-        <SectionHeader title={`${trainingPlan.name} — Week ${trainingPlan.currentWeek}`} />
+        <SectionHeader
+          title={
+            prepPlan && prepPlan.weeks.length > 0
+              ? `PREP Plan — Week ${prepPlan.currentWeekIndex + 1} · ${prepPlan.weeks[prepPlan.currentWeekIndex]?.phase ?? ""}`
+              : `${trainingPlan.name} — Week ${trainingPlan.currentWeek}`
+          }
+        />
         <View style={styles.ringsSection}>
           <View style={styles.ringsRow}>
             {(["swim", "bike", "run"] as const).map((disc) => {
@@ -268,83 +317,169 @@ export default function HomeScreen() {
 
         {/* Weekly Plan */}
         <GlassCard style={{ marginHorizontal: spacing.lg }}>
-          {trainingPlan.weeklyPlan.map((workout, idx) => {
-            const wColor = DISCIPLINE_COLORS[workout.discipline] ?? colors.textMuted;
-            const isToday = workout.day === todayName;
-            return (
-              <View key={workout.day}>
-                <View style={[styles.planRow, isToday && styles.planRowToday]}>
-                  <Text style={[styles.planDay, isToday && { color: colors.glowCyan }]}>{workout.day}</Text>
-                  <View style={[styles.planIcon, { backgroundColor: wColor + "15" }]}>
-                    <Ionicons
-                      name={DISCIPLINE_ICONS[workout.discipline] ?? "bed-outline"}
-                      size={14}
-                      color={wColor}
-                    />
-                  </View>
-                  <View style={styles.planInfo}>
-                    <Text style={styles.planTitle} numberOfLines={1}>{workout.title}</Text>
-                    {workout.discipline !== "rest" && (
-                      <Text style={styles.planStats}>
-                        {workout.duration} min{workout.distance ? ` • ${workout.distance} km` : ""}
-                      </Text>
+          {prepPlan && prepPlan.weeks.length > 0 ? (
+            (prepPlan.weeks[prepPlan.currentWeekIndex]?.sessions ?? []).map((session, idx, arr) => {
+              const sColor = DISCIPLINE_COLORS[session.discipline] ?? colors.textMuted;
+              const dayWeekday = PREP_DAY_TO_WEEKDAY[session.day];
+              const isToday = dayWeekday === todayIdx;
+              const isRest = session.discipline === "rest";
+              return (
+                <View key={session.id}>
+                  <View style={[styles.planRow, isToday && styles.planRowToday]}>
+                    <Text style={[styles.planDay, isToday && { color: colors.glowCyan }]}>{session.day.toUpperCase()}</Text>
+                    <View style={[styles.planIcon, { backgroundColor: sColor + "15" }]}>
+                      <Ionicons
+                        name={DISCIPLINE_ICONS[session.discipline] ?? "fitness"}
+                        size={14}
+                        color={sColor}
+                      />
+                    </View>
+                    <View style={styles.planInfo}>
+                      <Text style={styles.planTitle} numberOfLines={1}>{session.notes}</Text>
+                      {!isRest && (
+                        <Text style={styles.planStats}>{session.durationMin} min</Text>
+                      )}
+                    </View>
+                    {isRest ? null : session.completed ? (
+                      <TouchableOpacity
+                        onPress={() => markPrepSessionComplete(prepPlan.currentWeekIndex, session.id)}
+                        style={styles.checkCircle}
+                      >
+                        <Ionicons name="checkmark" size={14} color={colors.success} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => markPrepSessionComplete(prepPlan.currentWeekIndex, session.id)}
+                        style={styles.emptyCircle}
+                      />
                     )}
                   </View>
-                  {workout.completed ? (
-                    <View style={styles.checkCircle}>
-                      <Ionicons name="checkmark" size={14} color={colors.success} />
-                    </View>
-                  ) : workout.discipline !== "rest" ? (
-                    <View style={styles.emptyCircle} />
-                  ) : null}
+                  {idx < arr.length - 1 && <View style={styles.divider} />}
                 </View>
-                {idx < trainingPlan.weeklyPlan.length - 1 && <View style={styles.divider} />}
-              </View>
-            );
-          })}
+              );
+            })
+          ) : (
+            trainingPlan.weeklyPlan.map((workout, idx) => {
+              const wColor = DISCIPLINE_COLORS[workout.discipline] ?? colors.textMuted;
+              const isToday = workout.day === todayName;
+              return (
+                <View key={workout.day}>
+                  <View style={[styles.planRow, isToday && styles.planRowToday]}>
+                    <Text style={[styles.planDay, isToday && { color: colors.glowCyan }]}>{workout.day}</Text>
+                    <View style={[styles.planIcon, { backgroundColor: wColor + "15" }]}>
+                      <Ionicons
+                        name={DISCIPLINE_ICONS[workout.discipline] ?? "bed-outline"}
+                        size={14}
+                        color={wColor}
+                      />
+                    </View>
+                    <View style={styles.planInfo}>
+                      <Text style={styles.planTitle} numberOfLines={1}>{workout.title}</Text>
+                      {workout.discipline !== "rest" && (
+                        <Text style={styles.planStats}>
+                          {workout.duration} min{workout.distance ? ` • ${workout.distance} km` : ""}
+                        </Text>
+                      )}
+                    </View>
+                    {workout.completed ? (
+                      <View style={styles.checkCircle}>
+                        <Ionicons name="checkmark" size={14} color={colors.success} />
+                      </View>
+                    ) : workout.discipline !== "rest" ? (
+                      <View style={styles.emptyCircle} />
+                    ) : null}
+                  </View>
+                  {idx < trainingPlan.weeklyPlan.length - 1 && <View style={styles.divider} />}
+                </View>
+              );
+            })
+          )}
         </GlassCard>
 
         {/* Monthly Calendar */}
-        <SectionHeader title="March 2026" />
-        <GlassCard style={{ marginHorizontal: spacing.lg }}>
-          <View style={styles.calendarGrid}>
-            {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-              <Text key={`hdr-${i}`} style={styles.calendarDayHeader}>{d}</Text>
-            ))}
-            {(() => {
-              const firstDayOfWeek = new Date(2026, 2, 1).getDay();
-              const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-              const cells: React.ReactNode[] = [];
-              for (let i = 0; i < startOffset; i++) {
-                cells.push(<View key={`empty-${i}`} style={styles.calendarCell} />);
+        {(() => {
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+          const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+          const prepSessionMap = new Map<number, { discipline: string; completed: boolean }>();
+          if (prepPlan && prepPlan.weeks.length > 0) {
+            for (const week of prepPlan.weeks) {
+              const mondayDate = new Date(week.weekOf);
+              for (const session of week.sessions) {
+                if (session.discipline === "rest") continue;
+                const offsetDays = PREP_DAY_TO_MONDAY_IDX[session.day] ?? 0;
+                const sessionDate = new Date(mondayDate);
+                sessionDate.setDate(mondayDate.getDate() + offsetDays);
+                if (sessionDate.getMonth() === currentMonth && sessionDate.getFullYear() === currentYear) {
+                  prepSessionMap.set(sessionDate.getDate(), {
+                    discipline: session.discipline,
+                    completed: session.completed,
+                  });
+                }
               }
-              for (let dayNum = 1; dayNum <= 31; dayNum++) {
-                const dayOfWeek = new Date(2026, 2, dayNum).getDay();
-                const mondayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                const planItem = trainingPlan.weeklyPlan.find((w) => {
-                  const dayMap: Record<string, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
-                  return dayMap[w.day] === mondayIdx && w.discipline !== "rest";
-                });
-                const discColor = planItem ? (DISCIPLINE_COLORS[planItem.discipline] ?? colors.textMuted) : undefined;
-                const isToday = dayNum === new Date().getDate() && new Date().getMonth() === 2;
-                cells.push(
-                  <View
-                    key={dayNum}
-                    style={[styles.calendarCell, isToday && styles.calendarCellToday]}
-                  >
-                    <Text style={[styles.calendarDayNum, isToday && { color: colors.glowCyan }]}>
-                      {dayNum}
-                    </Text>
-                    {discColor && (
-                      <View style={[styles.calendarDot, { backgroundColor: discColor }]} />
-                    )}
-                  </View>
-                );
-              }
-              return cells;
-            })()}
-          </View>
-        </GlassCard>
+            }
+          }
+
+          return (
+            <>
+              <SectionHeader title={`${monthNames[currentMonth]} ${currentYear}`} />
+              <GlassCard style={{ marginHorizontal: spacing.lg }}>
+                <View style={styles.calendarGrid}>
+                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                    <Text key={`hdr-${i}`} style={styles.calendarDayHeader}>{d}</Text>
+                  ))}
+                  {(() => {
+                    const cells: React.ReactNode[] = [];
+                    for (let i = 0; i < startOffset; i++) {
+                      cells.push(<View key={`empty-${i}`} style={styles.calendarCell} />);
+                    }
+                    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+                      const dayOfWeek = new Date(currentYear, currentMonth, dayNum).getDay();
+                      const mondayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                      const isToday = dayNum === now.getDate() && currentMonth === now.getMonth() && currentYear === now.getFullYear();
+
+                      let discColor: string | undefined;
+                      let dotOpacity = 1;
+                      if (prepPlan && prepPlan.weeks.length > 0) {
+                        const entry = prepSessionMap.get(dayNum);
+                        if (entry) {
+                          discColor = DISCIPLINE_COLORS[entry.discipline] ?? colors.textMuted;
+                          dotOpacity = entry.completed ? 1 : 0.35;
+                        }
+                      } else {
+                        const planItem = trainingPlan.weeklyPlan.find((w) => {
+                          const dayMap: Record<string, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
+                          return dayMap[w.day] === mondayIdx && w.discipline !== "rest";
+                        });
+                        discColor = planItem ? (DISCIPLINE_COLORS[planItem.discipline] ?? colors.textMuted) : undefined;
+                      }
+
+                      cells.push(
+                        <View
+                          key={dayNum}
+                          style={[styles.calendarCell, isToday && styles.calendarCellToday]}
+                        >
+                          <Text style={[styles.calendarDayNum, isToday && { color: colors.glowCyan }]}>
+                            {dayNum}
+                          </Text>
+                          {discColor && (
+                            <View style={[styles.calendarDot, { backgroundColor: discColor, opacity: dotOpacity }]} />
+                          )}
+                        </View>
+                      );
+                    }
+                    return cells;
+                  })()}
+                </View>
+              </GlassCard>
+            </>
+          );
+        })()}
 
         {/* Weekly Progress Section */}
         <View style={styles.weeklyRow}>
