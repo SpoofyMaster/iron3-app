@@ -36,6 +36,7 @@ export default function RootLayout() {
             store.fetchProfile(session.user.id),
             store.fetchActivities(session.user.id),
           ]);
+          store.applyXpDecay();
         }
       } catch {
         // Supabase not configured yet — stay in mock/dev mode

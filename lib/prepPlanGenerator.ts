@@ -1,4 +1,4 @@
-import { DisciplineLevel, RaceDistanceGoal } from "@/types";
+import { DisciplineLevel } from "@/types";
 import { PrepPlan, PrepPlanWeek, PrepSession, PrepPhase } from "@/types";
 
 type SessionDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
@@ -64,7 +64,7 @@ const BASE_WEEKLY_HOURS: Record<string, { beginner: number; intermediate: number
 function getLevelCategory(swim: DisciplineLevel | null, bike: DisciplineLevel | null, run: DisciplineLevel | null): "beginner" | "intermediate" | "advanced" {
   const levels = [swim, bike, run].filter(Boolean) as DisciplineLevel[];
   if (levels.length === 0) return "beginner";
-  const map: Record<DisciplineLevel, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+  const map: Record<DisciplineLevel, number> = { beginner: 0, comfortable: 1, strong: 2 };
   const avg = levels.reduce((s, l) => s + map[l], 0) / levels.length;
   if (avg >= 1.5) return "advanced";
   if (avg >= 0.5) return "intermediate";
@@ -158,7 +158,7 @@ export function generatePrepPlan(
   raceId: string,
   raceName: string,
   raceDate: string,
-  raceDistance: RaceDistanceGoal,
+  raceDistance: string,
   swimLevel: DisciplineLevel | null,
   bikeLevel: DisciplineLevel | null,
   runLevel: DisciplineLevel | null,

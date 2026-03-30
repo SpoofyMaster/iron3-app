@@ -146,8 +146,6 @@ export default function EventsScreen() {
         visible={!!modalEvent}
         onClose={() => setModalEvent(null)}
       />
-        </View>
-      </ScrollView>
     </SafeAreaView>
   );
 }
