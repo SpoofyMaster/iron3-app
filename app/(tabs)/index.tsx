@@ -30,6 +30,8 @@ import { getTriRank, getRankForPoints } from "@/lib/ranks";
 import { MOTIVATIONAL_MESSAGES } from "@/lib/mockData";
 import { Discipline } from "@/types";
 import { getNextEvent, daysUntil } from "@/lib/ironmanEvents";
+import { TargetRaceCard } from "@/components/TargetRaceCard";
+import { XpDecayWarning } from "@/components/XpDecayWarning";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -216,6 +218,12 @@ export default function HomeScreen() {
 
           <TriRankDisplay triRank={triRank} />
         </GradientBackground>
+
+        {/* XP Decay Warning */}
+        <XpDecayWarning />
+
+        {/* Target Race Card */}
+        <TargetRaceCard />
 
         {/* Training Plan Progress Rings */}
         <SectionHeader title={`${trainingPlan.name} — Week ${trainingPlan.currentWeek}`} />

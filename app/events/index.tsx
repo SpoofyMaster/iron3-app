@@ -8,12 +8,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { IRONMAN_EVENTS_2026, getUpcomingEvents, daysUntil, formatEventDate, IronmanEvent } from "@/lib/ironmanEvents";
 import { IronmanEventCard } from "@/components/IronmanEventCard";
+import { SelectRaceModal } from "@/components/SelectRaceModal";
+import { useAppStore } from "@/store/useAppStore";
 import { useRouter } from "expo-router";
 
 export default function EventsScreen() {
   const router = useRouter();
+  const { selectedRaceEvent } = useAppStore();
   const [filter, setFilter] = useState<"all" | "70.3" | "Full">("all");
   const [search, setSearch] = useState("");
+  const [modalEvent, setModalEvent] = useState<IronmanEvent | null>(null);
 
   const filtered = IRONMAN_EVENTS_2026
     .filter(e => {
@@ -111,11 +115,37 @@ export default function EventsScreen() {
           <Text style={styles.count}>{filtered.length} upcoming events</Text>
 
           {/* Events List */}
-          {filtered.map(event => (
-            <IronmanEventCard key={event.id} event={event} />
-          ))}
+          {filtered.map(event => {
+            const isSelected = selectedRaceEvent?.id === event.id;
+            return (
+              <View key={event.id}>
+                <IronmanEventCard event={event} />
+                <TouchableOpacity
+                  style={[styles.selectBtn, isSelected && styles.selectBtnActive]}
+                  onPress={() => setModalEvent(event)}
+                >
+                  <Ionicons
+                    name={isSelected ? "checkmark-circle" : "flag-outline"}
+                    size={15}
+                    color={isSelected ? "#10B981" : colors.primary}
+                  />
+                  <Text style={[styles.selectBtnText, isSelected && styles.selectBtnTextActive]}>
+                    {isSelected ? "YOUR GOAL RACE ✓" : "Set as Goal Race"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
 
           <View style={{ height: 40 }} />
+        </View>
+      </ScrollView>
+
+      <SelectRaceModal
+        event={modalEvent}
+        visible={!!modalEvent}
+        onClose={() => setModalEvent(null)}
+      />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -251,5 +281,29 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginBottom: spacing.md,
+  },
+  selectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: `${colors.primary}40`,
+    borderRadius: borderRadius.lg,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: `${colors.primary}0a`,
+  },
+  selectBtnActive: {
+    borderColor: "#10B98140",
+    backgroundColor: "rgba(16,185,129,0.08)",
+  },
+  selectBtnText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.primary,
+  },
+  selectBtnTextActive: {
+    color: "#10B981",
   },
 });
