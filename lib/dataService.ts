@@ -67,7 +67,7 @@ export async function getOrCreateProfile(userId: string, email: string, displayN
   const name = displayName || email.split("@")[0];
   const { data, error } = await supabase
     .from("profiles")
-    .insert({ id: userId, email, display_name: name })
+    .upsert({ id: userId, email, display_name: name }, { onConflict: "id", ignoreDuplicates: true })
     .select()
     .single();
   if (error) throw error;
