@@ -32,8 +32,6 @@ const RANK_GRADIENTS: Record<RankTier, readonly [string, string, string]> = {
   Gold: ["#B45309", "#D97706", "#F59E0B"],
   Platinum: ["#4338CA", "#6366F1", "#818CF8"],
   Diamond: ["#0E7490", "#0891B2", "#22D3EE"],
-  Elite: ["#6D28D9", "#7C3AED", "#A78BFA"],
-  Legendary: ["#9F1239", "#E11D48", "#F43F5E"],
 };
 
 export function getRankGradient(rankTier: RankTier): readonly [string, string, string] {

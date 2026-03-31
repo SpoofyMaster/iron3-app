@@ -64,25 +64,21 @@ export const colors = {
 
   // Rank tiers — Ironman prestige palette
   rank: {
-    Iron: "#8B8B8B",
+    Iron: "#4B5563",
     Bronze: "#CD7F32",
     Silver: "#C0C0C0",
     Gold: "#FFD700",
     Platinum: "#E5E4E2",
     Diamond: "#00B4D8",
-    Elite: "#80ED99",
-    Legendary: "#FF4500",
   },
 
   rankGlow: {
-    Iron: "rgba(139, 139, 139, 0.25)",
+    Iron: "rgba(75, 85, 99, 0.35)",
     Bronze: "rgba(205, 127, 50, 0.35)",
     Silver: "rgba(192, 192, 192, 0.25)",
     Gold: "rgba(255, 215, 0, 0.45)",
     Platinum: "rgba(229, 228, 226, 0.3)",
     Diamond: "rgba(0, 180, 216, 0.5)",
-    Elite: "rgba(128, 237, 153, 0.45)",
-    Legendary: "rgba(255, 69, 0, 0.65)",
   },
 
   error: "#EF4444",

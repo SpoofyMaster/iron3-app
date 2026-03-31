@@ -202,7 +202,7 @@ export default function OnboardingScreen() {
               <View style={styles.featureList}>
                 {[
                   { icon: "flash" as const, text: "Earn XP across three disciplines", color: colors.run },
-                  { icon: "trophy" as const, text: "Climb from Iron to Legendary rank", color: colors.accentGold },
+                  { icon: "trophy" as const, text: "Climb from Iron to Diamond rank", color: colors.accentGold },
                   { icon: "globe" as const, text: "Compete on global leaderboards", color: colors.swim },
                   { icon: "trending-up" as const, text: "Track personal bests & progress", color: colors.bike },
                 ].map((feat, i) => (

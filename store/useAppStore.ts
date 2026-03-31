@@ -214,7 +214,7 @@ interface AppState {
 
 let workoutCounter = 0;
 
-const BRONZE_START_POINTS = 1000;
+const IRON_START_POINTS = 0;
 
 const emptyUser: UserProfile = {
   id: "",
@@ -584,9 +584,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   activities: [],
   personalBests: [],
 
-  swimPoints: BRONZE_START_POINTS,
-  bikePoints: BRONZE_START_POINTS,
-  runPoints: BRONZE_START_POINTS,
+  swimPoints: IRON_START_POINTS,
+  bikePoints: IRON_START_POINTS,
+  runPoints: IRON_START_POINTS,
 
   leaderboard: [],
   leaderboardFilter: "overall",
@@ -1160,9 +1160,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             user: emptyUser,
             activities: [],
             personalBests: [],
-            swimPoints: BRONZE_START_POINTS,
-            bikePoints: BRONZE_START_POINTS,
-            runPoints: BRONZE_START_POINTS,
+            swimPoints: IRON_START_POINTS,
+            bikePoints: IRON_START_POINTS,
+            runPoints: IRON_START_POINTS,
             leaderboard: [],
             rankHistory: [],
             weeklyStats: emptyWeeklyStats,
@@ -1235,21 +1235,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         ? activities
             .filter((a: Activity) => a.discipline === "swim")
             .reduce((sum: number, a: Activity) => sum + a.pointsEarned, 0)
-        : BRONZE_START_POINTS;
+        : IRON_START_POINTS;
       const bikePoints = hasRankPoints
         ? points.bike
         : hasAnyTrackedData
         ? activities
             .filter((a: Activity) => a.discipline === "bike")
             .reduce((sum: number, a: Activity) => sum + a.pointsEarned, 0)
-        : BRONZE_START_POINTS;
+        : IRON_START_POINTS;
       const runPoints = hasRankPoints
         ? points.run
         : hasAnyTrackedData
         ? activities
             .filter((a: Activity) => a.discipline === "run")
             .reduce((sum: number, a: Activity) => sum + a.pointsEarned, 0)
-        : BRONZE_START_POINTS;
+        : IRON_START_POINTS;
 
       const triRank = getTriRank(swimPoints, bikePoints, runPoints);
       const { friendProfiles, friendsLeaderboard } = mapFriendLeaderboard(
@@ -1409,9 +1409,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       const currentStreak = Number(streak.current_streak ?? fallbackStreak.currentStreak);
       const longestStreak = Number(streak.longest_streak ?? fallbackStreak.longestStreak);
 
-      const swimPoints = points.swim || BRONZE_START_POINTS;
-      const bikePoints = points.bike || BRONZE_START_POINTS;
-      const runPoints = points.run || BRONZE_START_POINTS;
+      const swimPoints = points.swim ?? IRON_START_POINTS;
+      const bikePoints = points.bike ?? IRON_START_POINTS;
+      const runPoints = points.run ?? IRON_START_POINTS;
       const overallPoints = getTriRank(swimPoints, bikePoints, runPoints).overallPoints;
       const performanceStats = buildPerformanceStats(activities, workoutLogs, currentStreak, overallPoints);
 

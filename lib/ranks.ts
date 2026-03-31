@@ -7,9 +7,7 @@ export const RANK_THRESHOLDS: RankThreshold[] = [
   { tier: "Silver", min: 2500, max: 4999, color: colors.rank.Silver },
   { tier: "Gold", min: 5000, max: 9999, color: colors.rank.Gold },
   { tier: "Platinum", min: 10000, max: 14999, color: colors.rank.Platinum },
-  { tier: "Diamond", min: 15000, max: 24999, color: colors.rank.Diamond },
-  { tier: "Elite", min: 25000, max: 39999, color: colors.rank.Elite },
-  { tier: "Legendary", min: 40000, max: Infinity, color: colors.rank.Legendary },
+  { tier: "Diamond", min: 15000, max: Infinity, color: colors.rank.Diamond },
 ];
 
 export function getRankForPoints(points: number): {
@@ -24,13 +22,13 @@ export function getRankForPoints(points: number): {
   for (let i = 0; i < RANK_THRESHOLDS.length; i++) {
     const threshold = RANK_THRESHOLDS[i];
     if (clamped >= threshold.min && clamped <= threshold.max) {
-      const isLegendary = threshold.tier === "Legendary";
-      const range = isLegendary ? 40000 : threshold.max - threshold.min + 1;
-      const progress = isLegendary
+      const isTopTier = threshold.max === Infinity;
+      const range = isTopTier ? 10000 : threshold.max - threshold.min + 1;
+      const progress = isTopTier
         ? Math.min((clamped - threshold.min) / range, 1)
         : (clamped - threshold.min) / range;
-      const nextTierPoints = isLegendary ? null : threshold.max + 1;
-      const pointsToNext = isLegendary ? null : threshold.max + 1 - clamped;
+      const nextTierPoints = isTopTier ? null : threshold.max + 1;
+      const pointsToNext = isTopTier ? null : threshold.max + 1 - clamped;
 
       return {
         tier: threshold.tier,
@@ -110,8 +108,6 @@ const RANK_ORDER: RankTier[] = [
   "Gold",
   "Platinum",
   "Diamond",
-  "Elite",
-  "Legendary",
 ];
 
 export function getNextRankTier(tier: RankTier): RankTier | null {

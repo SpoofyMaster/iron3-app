@@ -29,20 +29,18 @@ const tierSymbols: Record<RankTier, string> = {
   Gold: "Au",
   Platinum: "Pt",
   Diamond: "◇",
-  Elite: "★",
-  Legendary: "◆",
 };
 
 function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: string; tier: RankTier }) {
   const gradientColors = getRankGradient(tier);
-  const isLegendary = tier === "Legendary";
+  const isDiamond = tier === "Diamond";
   const viewBox = "0 0 100 120";
 
   return (
     <Svg width={size} height={size * 1.2} viewBox={viewBox}>
       <Defs>
         <RadialGradient id="shieldGrad" cx="50%" cy="40%" r="60%">
-          <Stop offset="0%" stopColor={gradientColors[2]} stopOpacity={isLegendary ? "0.9" : "0.7"} />
+          <Stop offset="0%" stopColor={gradientColors[2]} stopOpacity={isDiamond ? "0.9" : "0.7"} />
           <Stop offset="50%" stopColor={gradientColors[1]} stopOpacity="0.4" />
           <Stop offset="100%" stopColor={gradientColors[0]} stopOpacity="0.2" />
         </RadialGradient>
@@ -56,8 +54,8 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
         d="M50 5 L85 20 L90 55 L50 115 L10 55 L15 20 Z"
         fill="url(#shieldGrad)"
         stroke={tierColor}
-        strokeWidth={isLegendary ? 2.5 : 1.5}
-        strokeOpacity={isLegendary ? 0.9 : 0.6}
+        strokeWidth={isDiamond ? 2.5 : 1.5}
+        strokeOpacity={isDiamond ? 0.9 : 0.6}
       />
       {/* Inner glow */}
       <Path
@@ -85,7 +83,7 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
         strokeOpacity={0.5}
         strokeLinecap="round"
       />
-      {isLegendary && (
+      {isDiamond && (
         <>
           <Path
             d="M50 5 L85 20 L90 55 L50 115 L10 55 L15 20 Z"
@@ -110,8 +108,8 @@ export function RankBadge({
   points,
 }: RankBadgeProps) {
   const cfg = sizeConfig[size];
-  const isLegendary = tier === "Legendary";
-  const glowStyle = getGlowStyle(tierColor, isLegendary ? "lg" : "md");
+  const isDiamond = tier === "Diamond";
+  const glowStyle = getGlowStyle(tierColor, isDiamond ? "lg" : "md");
 
   return (
     <View style={styles.container}>
@@ -126,7 +124,7 @@ export function RankBadge({
                 color: tierColor,
                 textShadowColor: tierColor,
                 textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: isLegendary ? 12 : 6,
+                textShadowRadius: isDiamond ? 12 : 6,
               },
             ]}
           >
