@@ -86,7 +86,7 @@ const PREMIUM_FEATURES = [
     icon: "ribbon" as const,
     title: "Exclusive Badges",
     desc: "Earn special achievement badges and milestones",
-    color: colors.rank.Legendary,
+    color: colors.rank.Diamond,
   },
 ];
 

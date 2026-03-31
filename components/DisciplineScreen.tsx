@@ -97,7 +97,7 @@ export function DisciplineScreenView({
               color={dColors.main}
               height={10}
               showPercentage
-              label={nextTier ? `Progress to ${nextTier}` : "Legendary Rank"}
+              label={nextTier ? `Progress to ${nextTier}` : "Diamond Rank"}
               sublabel={
                 rank.pointsToNext
                   ? `${formatPoints(rank.pointsToNext)} pts remaining`

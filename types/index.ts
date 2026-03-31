@@ -8,9 +8,7 @@ export type RankTier =
   | "Silver"
   | "Gold"
   | "Platinum"
-  | "Diamond"
-  | "Elite"
-  | "Legendary";
+  | "Diamond";
 
 export interface RankThreshold {
   tier: RankTier;
@@ -201,8 +199,6 @@ export type MilestoneType =
   | "rank_up_gold"
   | "rank_up_platinum"
   | "rank_up_diamond"
-  | "rank_up_elite"
-  | "rank_up_legendary"
   | "first_swim"
   | "first_bike"
   | "first_run"
