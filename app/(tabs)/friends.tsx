@@ -18,6 +18,9 @@ import { LeaderboardTab } from "@/types";
 import {
   getSupabaseLeaderboard,
   SupabaseLeaderboardEntry,
+  acceptFriendRequest,
+  declineFriendRequest,
+  listFriendRequests,
   searchProfiles,
   sendFriendRequest,
 } from "@/lib/dataService";
@@ -27,6 +30,14 @@ type SearchProfileRow = {
   id: string;
   display_name: string;
   avatar_url: string | null;
+};
+type IncomingFriendRequestRow = {
+  id: string;
+  user: {
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
 };
 
 const TAB_OPTIONS: { key: LeaderboardTab; label: string }[] = [
@@ -66,6 +77,10 @@ export default function FriendsTabScreen() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [requestedFollowIds, setRequestedFollowIds] = useState<string[]>([]);
   const [sendingFollowIds, setSendingFollowIds] = useState<string[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<IncomingFriendRequestRow[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [processingRequestIds, setProcessingRequestIds] = useState<string[]>([]);
 
   useEffect(() => {
     setActiveTab(storeTab);
@@ -121,6 +136,38 @@ export default function FriendsTabScreen() {
     [chats]
   );
   const friendIdSet = useMemo(() => new Set(friendProfiles.map((friend) => friend.id)), [friendProfiles]);
+  const pendingCount = pendingRequests.length;
+
+  const loadPendingRequests = async () => {
+    if (!currentUserId) {
+      setPendingRequests([]);
+      setPendingError(null);
+      setPendingLoading(false);
+      return;
+    }
+
+    setPendingLoading(true);
+    setPendingError(null);
+    try {
+      const rows = (await listFriendRequests(currentUserId)) as IncomingFriendRequestRow[];
+      setPendingRequests(rows);
+    } catch (requestErr) {
+      console.error("Failed to load pending requests:", requestErr);
+      setPendingError("Unable to load pending requests.");
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPendingRequests();
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      loadPendingRequests();
+    }
+  }, [isSearchOpen, currentUserId]);
 
   useEffect(() => {
     const query = searchQuery.trim();
@@ -177,6 +224,34 @@ export default function FriendsTabScreen() {
     }
   };
 
+  const handleAcceptRequest = async (requestId: string) => {
+    if (!currentUserId || processingRequestIds.includes(requestId)) return;
+    setProcessingRequestIds((prev) => (prev.includes(requestId) ? prev : [...prev, requestId]));
+    try {
+      await acceptFriendRequest(requestId);
+      await refreshFriends(currentUserId);
+      await loadPendingRequests();
+    } catch (acceptErr) {
+      console.error("Failed to accept friend request:", acceptErr);
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== requestId));
+    }
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    if (!currentUserId || processingRequestIds.includes(requestId)) return;
+    setProcessingRequestIds((prev) => (prev.includes(requestId) ? prev : [...prev, requestId]));
+    try {
+      await declineFriendRequest(requestId);
+      await loadPendingRequests();
+      await refreshFriends(currentUserId);
+    } catch (declineErr) {
+      console.error("Failed to decline friend request:", declineErr);
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== requestId));
+    }
+  };
+
   const topThree = leaderboard.slice(0, 3);
   const rankedList = leaderboard.slice(3);
   const selectedDisciplineLabel = DISCIPLINE_OPTIONS.find((opt) => opt.key === discipline)?.label ?? "Overall";
@@ -187,13 +262,30 @@ export default function FriendsTabScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.headerRow}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.searchIconButton}
-            activeOpacity={0.75}
-            onPress={() => setIsSearchOpen((prev) => !prev)}
-          >
-            <Ionicons name="search-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
+          <View style={styles.headerIconGroup}>
+            <View style={styles.headerIconWrap}>
+              <TouchableOpacity
+                style={styles.searchIconButton}
+                activeOpacity={0.75}
+                onPress={() => setIsSearchOpen((prev) => !prev)}
+              >
+                <Ionicons name="search-outline" size={20} color={colors.text} />
+              </TouchableOpacity>
+              {pendingCount > 0 ? <View style={styles.searchNotificationDot} /> : null}
+            </View>
+            <TouchableOpacity
+              style={styles.notificationIconButton}
+              activeOpacity={0.75}
+              onPress={() => setIsSearchOpen(true)}
+            >
+              <Ionicons name="notifications-outline" size={20} color={colors.text} />
+              {pendingCount > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{pendingCount > 99 ? "99+" : pendingCount}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+          </View>
           <Text style={styles.title}>RANKINGS</Text>
         </View>
         <TouchableOpacity
@@ -213,6 +305,68 @@ export default function FriendsTabScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {isSearchOpen ? (
           <GlassCard style={styles.searchCard}>
+            <View style={styles.pendingSection}>
+              <View style={styles.pendingHeaderRow}>
+                <Text style={styles.pendingTitle}>Pending Requests</Text>
+                {pendingLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+              </View>
+              {pendingError ? (
+                <Text style={styles.searchHint}>{pendingError}</Text>
+              ) : pendingRequests.length === 0 ? (
+                <Text style={styles.pendingEmptyText}>No pending follow requests.</Text>
+              ) : (
+                pendingRequests.map((request, idx) => {
+                  const displayName = request.user?.display_name?.trim() || "Athlete";
+                  const isProcessing = processingRequestIds.includes(request.id);
+                  return (
+                    <View key={request.id}>
+                      <View style={styles.pendingRow}>
+                        <TouchableOpacity
+                          style={styles.pendingProfileTap}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            const requesterId = request.user?.id;
+                            if (!requesterId) return;
+                            router.push(`/friends/${requesterId}` as never);
+                          }}
+                        >
+                          <View style={styles.searchAvatar}>
+                            <Text style={styles.searchAvatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+                          </View>
+                          <Text style={styles.searchName} numberOfLines={1}>
+                            {displayName}
+                          </Text>
+                        </TouchableOpacity>
+                        <View style={styles.pendingActionsRow}>
+                          <TouchableOpacity
+                            style={[styles.pendingActionBtn, styles.pendingDeclineBtn]}
+                            activeOpacity={0.8}
+                            disabled={isProcessing}
+                            onPress={() => handleDeclineRequest(request.id)}
+                          >
+                            <Text style={styles.pendingDeclineBtnText}>
+                              {isProcessing ? "..." : "DECLINE"}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.pendingActionBtn, styles.pendingAcceptBtn]}
+                            activeOpacity={0.8}
+                            disabled={isProcessing}
+                            onPress={() => handleAcceptRequest(request.id)}
+                          >
+                            <Text style={styles.pendingAcceptBtnText}>
+                              {isProcessing ? "..." : "ACCEPT"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      {idx < pendingRequests.length - 1 ? <View style={styles.divider} /> : null}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+
             <View style={styles.searchInputRow}>
               <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -480,6 +634,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+  headerIconGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconWrap: {
+    position: "relative",
+  },
   title: {
     color: colors.text,
     fontSize: fontSize.xxl,
@@ -495,6 +657,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceGlassBorder,
     backgroundColor: colors.surfaceGlass,
+  },
+  searchNotificationDot: {
+    position: "absolute",
+    top: 1,
+    right: 1,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.error,
+    borderWidth: 1,
+    borderColor: colors.background,
+  },
+  notificationIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
+    position: "relative",
   },
   chatIconButton: {
     width: 36,
@@ -536,6 +720,69 @@ const styles = StyleSheet.create({
   },
   searchCard: {
     gap: 10,
+  },
+  pendingSection: {
+    gap: 8,
+  },
+  pendingHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  pendingTitle: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  pendingEmptyText: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  pendingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  pendingProfileTap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  pendingActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pendingActionBtn: {
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 78,
+    alignItems: "center",
+  },
+  pendingAcceptBtn: {
+    borderColor: colors.success + "66",
+    backgroundColor: colors.success + "1F",
+  },
+  pendingDeclineBtn: {
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
+  },
+  pendingAcceptBtnText: {
+    color: colors.success,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.4,
+  },
+  pendingDeclineBtnText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.4,
   },
   searchInputRow: {
     flexDirection: "row",

@@ -17,6 +17,7 @@ import {
   listWorkoutLogs,
   getLatestRaceGoalEvent,
   getAthleteSummary,
+  getFollowCounts,
   sendFriendRequest,
 } from "@/lib/dataService";
 import { FriendProfileSummary } from "@/types";
@@ -51,6 +52,7 @@ export default function FriendProfileScreen() {
   const [activities, setActivities] = useState<FriendActivity[]>([]);
   const [workouts, setWorkouts] = useState<FriendWorkout[]>([]);
   const [targetRace, setTargetRace] = useState<string | null>(friend?.targetRaceEventName ?? null);
+  const [followCounts, setFollowCounts] = useState<{ followers: number; following: number } | null>(null);
   const [followRequested, setFollowRequested] = useState(false);
   const [sendingFollow, setSendingFollow] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -92,14 +94,16 @@ export default function FriendProfileScreen() {
       if (!id) return;
       setLoading(true);
       try {
-        const [actRows, workoutRows, raceGoal] = await Promise.all([
+        const [actRows, workoutRows, raceGoal, counts] = await Promise.all([
           listActivities(id, { limit: 12 }),
           listWorkoutLogs(id, { limit: 8 }),
           getLatestRaceGoalEvent(id),
+          getFollowCounts(id),
         ]);
         setActivities(actRows as FriendActivity[]);
         setWorkouts(workoutRows as FriendWorkout[]);
         setTargetRace(raceGoal?.event_name ?? raceGoal?.event_id ?? raceGoal?.event_date ?? null);
+        setFollowCounts(counts);
       } catch (error) {
         console.error("Failed to load friend profile:", error);
       } finally {
@@ -170,6 +174,14 @@ export default function FriendProfileScreen() {
           </View>
           <Text style={styles.name}>{athlete.displayName}</Text>
           <RankBadge tier={athlete.rankTier} tierColor={athlete.rankColor} size="md" />
+          <View style={styles.followCountsRow}>
+            <Text style={styles.followCountText}>
+              <Text style={styles.followCountValue}>{followCounts?.followers ?? 0}</Text> Followers
+            </Text>
+            <Text style={styles.followCountText}>
+              <Text style={styles.followCountValue}>{followCounts?.following ?? 0}</Text> Following
+            </Text>
+          </View>
           <Text style={styles.rankPoints}>{athlete.overallPoints.toLocaleString()} RP</Text>
           <Text style={styles.targetRaceLabel}>
             {targetRace ? `Target race: ${targetRace}` : "No target race selected"}
@@ -307,6 +319,19 @@ const styles = StyleSheet.create({
   name: {
     color: colors.text,
     fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+  },
+  followCountsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  followCountText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+  },
+  followCountValue: {
+    color: colors.text,
     fontWeight: fontWeight.bold,
   },
   rankPoints: {

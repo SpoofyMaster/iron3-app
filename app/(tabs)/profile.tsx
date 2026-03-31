@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatPoints, getTriRank } from "@/lib/ranks";
 import { supabase } from "@/lib/supabase";
 import { signOut } from "@/lib/auth";
+import { getFollowCounts } from "@/lib/dataService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -49,6 +50,23 @@ export default function ProfileScreen() {
   const togglePremium = useAppStore((s) => s.togglePremium);
   const socialProfile = useAppStore((s) => s.socialProfile);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [followCounts, setFollowCounts] = useState<{ followers: number; following: number } | null>(null);
+
+  useEffect(() => {
+    const loadFollowCounts = async () => {
+      if (!currentUserId) {
+        setFollowCounts(null);
+        return;
+      }
+      try {
+        const counts = await getFollowCounts(currentUserId);
+        setFollowCounts(counts);
+      } catch (countErr) {
+        console.error("Failed to load follow counts:", countErr);
+      }
+    };
+    loadFollowCounts();
+  }, [currentUserId]);
 
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -155,10 +173,17 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{user.displayName}</Text>
-            <Text style={styles.followers}>
-              <Text style={styles.followersBold}>{socialProfile.followers}</Text> followers  
-              <Text style={styles.followersBold}> {socialProfile.following}</Text> following
-            </Text>
+            <View style={styles.followCountsRow}>
+              <Text style={styles.followCountText}>
+                <Text style={styles.followCountValue}>{followCounts?.followers ?? socialProfile.followers}</Text>{" "}
+                Followers
+              </Text>
+              <Text style={styles.followCountDivider}>•</Text>
+              <Text style={styles.followCountText}>
+                <Text style={styles.followCountValue}>{followCounts?.following ?? socialProfile.following}</Text>{" "}
+                Following
+              </Text>
+            </View>
             <Text style={styles.bio}>{socialProfile.bio}</Text>
           </View>
           <View style={styles.rankEmblem}>
@@ -465,13 +490,22 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
   },
-  followers: {
+  followCountsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  followCountText: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
   },
-  followersBold: {
+  followCountValue: {
     color: colors.text,
     fontWeight: fontWeight.bold,
+  },
+  followCountDivider: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
   },
   bio: {
     color: colors.textMuted,
