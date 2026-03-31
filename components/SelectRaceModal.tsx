@@ -24,8 +24,8 @@ export function SelectRaceModal({ event, visible, onClose }: Props) {
   const isAlreadySelected = selectedRaceEvent?.id === event.id;
   const hasExistingGoal = !!selectedRaceEvent && !isAlreadySelected;
 
-  const handleSelect = (autoGeneratePlan: boolean) => {
-    selectRaceEvent(event, autoGeneratePlan);
+  const handleSelect = async (autoGeneratePlan: boolean) => {
+    await selectRaceEvent(event, autoGeneratePlan);
     onClose();
     if (autoGeneratePlan) {
       router.push("/prep-plan" as any);

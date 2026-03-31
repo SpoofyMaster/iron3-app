@@ -30,13 +30,17 @@ export default function LeaderboardScreen() {
   const setLeaderboardFilter = useAppStore((s) => s.setLeaderboardFilter);
   const setLeaderboardScope = useAppStore((s) => s.setLeaderboardScope);
   const leaderboard = useAppStore((s) => s.leaderboard);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const friendProfiles = useAppStore((s) => s.friendProfiles);
   const isPremium = useAppStore((s) => s.user.isPremium);
   const filteredLeaderboard = useMemo(() => {
     if (leaderboardScope === "friends") {
-      return leaderboard.filter((e) => e.isFriend || e.userId === "user-001");
+      const friendIds = new Set(friendProfiles.map((friend) => friend.id));
+      if (currentUserId) friendIds.add(currentUserId);
+      return leaderboard.filter((entry) => friendIds.has(entry.userId));
     }
     return leaderboard;
-  }, [leaderboard, leaderboardScope]);
+  }, [leaderboard, leaderboardScope, friendProfiles, currentUserId]);
 
   const topThree = filteredLeaderboard.slice(0, 3);
   const rest = filteredLeaderboard.slice(3);
@@ -140,7 +144,7 @@ export default function LeaderboardScreen() {
             <View key={entry.userId}>
               <LeaderboardRow
                 entry={entry}
-                isCurrentUser={entry.userId === "user-001"}
+                isCurrentUser={entry.userId === currentUserId}
               />
               {idx < rest.length - 1 && <View style={styles.divider} />}
             </View>

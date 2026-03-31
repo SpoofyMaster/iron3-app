@@ -106,9 +106,9 @@ export default function LiveWorkoutScreen() {
     }
   }, [liveWorkout.isPaused]);
 
-  const handleStop = useCallback(() => {
+  const handleStop = useCallback(async () => {
     stopLiveWorkout();
-    logWorkout({
+    await logWorkout({
       discipline: liveWorkout.discipline,
       workoutType: "easy",
       duration: elapsed,
@@ -119,7 +119,7 @@ export default function LiveWorkoutScreen() {
       date: new Date().toISOString(),
     });
     router.back();
-  }, [elapsed, simulatedDistance, liveWorkout.discipline]);
+  }, [elapsed, simulatedDistance, liveWorkout.discipline, logWorkout, router, stopLiveWorkout]);
 
   const splits = liveWorkout.splits.length > 0
     ? liveWorkout.splits.slice(-3)

@@ -19,7 +19,7 @@ import {
   GradientBackground,
   LevelStreakBar,
 } from "@/components";
-import { getTriRank, RANK_THRESHOLDS } from "@/lib/ranks";
+import { getTriRank } from "@/lib/ranks";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 
 export default function ProgressScreen() {
@@ -81,6 +81,7 @@ export default function ProgressScreen() {
 
   const achievedMilestones = useMemo(() => milestones.filter((m) => m.achievedAt !== null), [milestones]);
   const upcomingMilestones = useMemo(() => milestones.filter((m) => m.achievedAt === null), [milestones]);
+  const hasTrackedData = workoutLogs.length > 0 || weeklyVolumes.some((week) => week.swimHours + week.bikeHours + week.runHours > 0);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -117,6 +118,14 @@ export default function ProgressScreen() {
 
         <PremiumLock isLocked={!isPremium} message="Unlock Full Analytics">
           <View style={styles.analyticsContent}>
+            {!hasTrackedData ? (
+              <GlassCard style={styles.zeroStateCard} variant="highlighted">
+                <Text style={styles.zeroStateTitle}>Start your journey</Text>
+                <Text style={styles.zeroStateText}>
+                  Your evolution charts will appear after your first logged workout. Every session moves you forward.
+                </Text>
+              </GlassCard>
+            ) : null}
             <SectionHeader title="Rank Progression" />
             <GlassCard>
               <MiniChart
@@ -348,6 +357,19 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: spacing.lg,
     paddingTop: 16,
+  },
+  zeroStateCard: {
+    gap: 6,
+  },
+  zeroStateTitle: {
+    color: colors.text,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+  },
+  zeroStateText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
   },
   streakRow: {
     flexDirection: "row",

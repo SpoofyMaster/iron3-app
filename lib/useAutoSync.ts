@@ -33,11 +33,8 @@ export function useAutoSync() {
         if (result.synced > 0) {
           console.log(`Auto-sync: imported ${result.synced} new workouts`);
           const store = useAppStore.getState();
-          // Refresh profile + activities to update points & UI
-          await Promise.all([
-            store.fetchProfile(currentUserId),
-            store.fetchActivities(currentUserId),
-          ]);
+          // Re-hydrate persisted data so all derived stats stay in sync.
+          await store.hydrateUserData(currentUserId);
         }
       } catch (e) {
         console.error("Auto-sync failed:", e);

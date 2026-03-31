@@ -55,6 +55,7 @@ export default function RegisterScreen() {
 
     if (result.user) {
       setAuth(true, result.user.id);
+      await useAppStore.getState().hydrateUserData(result.user.id);
     } else {
       Alert.alert(
         "Check your email",

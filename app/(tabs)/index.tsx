@@ -20,15 +20,13 @@ import {
   StatCard,
   GlassCard,
   PremiumBanner,
-  StreakBadge,
   GradientBackground,
   LevelStreakBar,
 } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatDistance } from "@/lib/scoring";
-import { getTriRank, getRankForPoints } from "@/lib/ranks";
+import { getTriRank } from "@/lib/ranks";
 import { MOTIVATIONAL_MESSAGES } from "@/lib/mockData";
-import { Discipline } from "@/types";
 import { getNextEvent, daysUntil } from "@/lib/ironmanEvents";
 import { TargetRaceCard } from "@/components/TargetRaceCard";
 import { XpDecayWarning } from "@/components/XpDecayWarning";
@@ -69,7 +67,8 @@ export default function HomeScreen() {
   const isPremium = useAppStore((s) => s.user.isPremium);
   const displayName = useAppStore((s) => s.user.displayName);
   const currentStreak = useAppStore((s) => s.currentStreak);
-  const raceGoal = useAppStore((s) => s.raceGoal);
+  const selectedRaceEvent = useAppStore((s) => s.selectedRaceEvent);
+  const performanceStats = useAppStore((s) => s.performanceStats);
   const milestones = useAppStore((s) => s.milestones);
   const trainingPlan = useAppStore((s) => s.trainingPlan);
   const prepPlan = useAppStore((s) => s.prepPlan);
@@ -78,16 +77,16 @@ export default function HomeScreen() {
   const recentActivities = useMemo(() => activities.slice(0, 5), [activities]);
 
   const daysToRace = useMemo(() => {
-    if (!raceGoal?.raceDate) return null;
+    if (!selectedRaceEvent?.date) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     // Parse just the date portion to avoid UTC offset shifting the day
-    const dateStr = raceGoal.raceDate.slice(0, 10); // "YYYY-MM-DD"
+    const dateStr = selectedRaceEvent.date.slice(0, 10); // "YYYY-MM-DD"
     const [y, m, d] = dateStr.split("-").map(Number);
     const raceDay = new Date(y, m - 1, d);
     const diff = raceDay.getTime() - today.getTime();
     return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
-  }, [raceGoal]);
+  }, [selectedRaceEvent]);
 
   // Next real Ironman event from global calendar
   const nextIronmanEvent = useMemo(() => getNextEvent(), []);
@@ -267,6 +266,63 @@ export default function HomeScreen() {
 
         {/* Target Race Card */}
         <TargetRaceCard />
+        {selectedRaceEvent && daysToRace !== null && (
+          <GlassCard style={styles.goalSummaryCard} variant="highlighted">
+            <Text style={styles.goalSummaryTitle}>Target Race</Text>
+            <Text style={styles.goalSummaryValue}>
+              {selectedRaceEvent.name} in {daysToRace} days
+            </Text>
+          </GlassCard>
+        )}
+
+        <SectionHeader title="Performance Evolution" />
+        {performanceStats.workoutsCount === 0 ? (
+          <GlassCard style={styles.emptyJourneyCard} variant="highlighted">
+            <Text style={styles.emptyJourneyTitle}>Start your journey</Text>
+            <Text style={styles.emptyJourneyText}>
+              Log your first workout to unlock your progression charts and performance evolution.
+            </Text>
+          </GlassCard>
+        ) : (
+          <View style={styles.evolutionGrid}>
+            <StatCard
+              icon="water"
+              iconColor={colors.swim}
+              label="Swim Total"
+              value={`${Math.round(performanceStats.totalSwimDistance)} m`}
+            />
+            <StatCard
+              icon="bicycle"
+              iconColor={colors.bike}
+              label="Bike Total"
+              value={`${performanceStats.totalBikeDistance.toFixed(1)} km`}
+            />
+            <StatCard
+              icon="walk"
+              iconColor={colors.run}
+              label="Run Total"
+              value={`${performanceStats.totalRunDistance.toFixed(1)} km`}
+            />
+            <StatCard
+              icon="time"
+              iconColor={colors.glowCyan}
+              label="Training Time"
+              value={`${Math.round(performanceStats.totalTrainingTime / 60)} min`}
+            />
+            <StatCard
+              icon="barbell"
+              iconColor={colors.glowPurple}
+              label="Workouts"
+              value={String(performanceStats.workoutsCount)}
+            />
+            <StatCard
+              icon="trending-up"
+              iconColor={colors.primary}
+              label="Rank Progress"
+              value={`${performanceStats.rankProgressPercentage}%`}
+            />
+          </View>
+        )}
 
         {/* Training Plan Progress Rings */}
         <SectionHeader
@@ -736,6 +792,41 @@ const styles = StyleSheet.create({
   },
   motivational: {
     paddingVertical: 12,
+  },
+  goalSummaryCard: {
+    marginHorizontal: spacing.lg,
+    gap: 4,
+  },
+  goalSummaryTitle: {
+    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+  },
+  goalSummaryValue: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+  },
+  emptyJourneyCard: {
+    marginHorizontal: spacing.lg,
+    gap: 6,
+  },
+  emptyJourneyTitle: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+  },
+  emptyJourneyText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+  },
+  evolutionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: spacing.lg,
+    gap: 10,
   },
   motivationalText: {
     color: colors.textSecondary,
