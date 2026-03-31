@@ -587,6 +587,34 @@ export async function acceptFriendRequest(requestId: string) {
   return data;
 }
 
+export async function declineFriendRequest(requestId: string) {
+  const { error } = await supabase.from("friendships").delete().eq("id", requestId);
+  if (error) throw error;
+}
+
+export async function getFollowCounts(userId: string): Promise<{ followers: number; following: number }> {
+  const [followersRes, followingRes] = await Promise.all([
+    supabase
+      .from("friendships")
+      .select("id", { count: "exact", head: true })
+      .eq("friend_id", userId)
+      .eq("status", "accepted"),
+    supabase
+      .from("friendships")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "accepted"),
+  ]);
+
+  if (followersRes.error) throw followersRes.error;
+  if (followingRes.error) throw followingRes.error;
+
+  return {
+    followers: followersRes.count ?? 0,
+    following: followingRes.count ?? 0,
+  };
+}
+
 export async function searchProfiles(query: string, excludeUserId: string, limit = 20) {
   const { data, error } = await supabase
     .from("profiles")
