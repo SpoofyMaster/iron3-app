@@ -31,11 +31,7 @@ export default function RootLayout() {
         if (session?.user) {
           setAuth(true, session.user.id);
           const store = useAppStore.getState();
-          // Fetch real profile + activities from Supabase
-          await Promise.all([
-            store.fetchProfile(session.user.id),
-            store.fetchActivities(session.user.id),
-          ]);
+          await store.hydrateUserData(session.user.id);
           store.applyXpDecay();
         }
       } catch {
@@ -54,8 +50,7 @@ export default function RootLayout() {
       if (event === "SIGNED_IN" && session?.user) {
         setAuth(true, session.user.id);
         const store = useAppStore.getState();
-        store.fetchProfile(session.user.id);
-        store.fetchActivities(session.user.id);
+        store.hydrateUserData(session.user.id);
       } else if (event === "SIGNED_OUT") {
         setAuth(false);
       }
@@ -115,6 +110,9 @@ export default function RootLayout() {
         <Stack.Screen name="workout" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="events" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="friends/[id]" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="chat/index" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="chat/[id]" options={{ animation: "slide_from_right" }} />
       </Stack>
     </>
   );

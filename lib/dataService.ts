@@ -1,11 +1,30 @@
+import { getRankForPoints } from "@/lib/ranks";
+import { ChatConversation, ChatMessage, Discipline, FriendProfileSummary, RankTier } from "@/types";
 import { supabase } from "./supabase";
 
-// ============================================================
-// DATA SERVICE — Iron3 Supabase CRUD
-// ============================================================
+type DisciplinePoints = { swim: number; bike: number; run: number };
+
+export interface PersistedRaceGoalEvent {
+  id: string;
+  user_id: string;
+  event_id: string;
+  event_name: string;
+  event_date: string;
+  created_at: string;
+}
+
+function rankTypeFromDistance(distance: "70.3" | "Full" | "5150"): string {
+  if (distance === "Full") return "full_ironman";
+  if (distance === "70.3") return "half_ironman";
+  return "olympic";
+}
+
+function rowDate(value: unknown): string {
+  if (!value) return new Date().toISOString();
+  return typeof value === "string" ? value : String(value);
+}
 
 // ---------- PROFILES ----------
-
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
@@ -13,18 +32,15 @@ export async function getProfile(userId: string) {
     .eq("id", userId)
     .single();
 
-  // PGRST116 = no rows found — profile doesn't exist yet
   if (error && error.code === "PGRST116") return null;
   if (error) throw error;
   return data;
 }
 
 export async function getOrCreateProfile(userId: string, email: string, displayName?: string) {
-  // Try to get existing profile first
   const existing = await getProfile(userId);
   if (existing) return existing;
 
-  // Profile doesn't exist — create it now
   const name = displayName || email.split("@")[0];
   const { data, error } = await supabase
     .from("profiles")
@@ -35,10 +51,7 @@ export async function getOrCreateProfile(userId: string, email: string, displayN
   return data;
 }
 
-export async function updateProfile(
-  userId: string,
-  updates: Record<string, unknown>
-) {
+export async function updateProfile(userId: string, updates: Record<string, unknown>) {
   const { data, error } = await supabase
     .from("profiles")
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -50,7 +63,6 @@ export async function updateProfile(
 }
 
 // ---------- ACTIVITIES ----------
-
 export async function listActivities(
   userId: string,
   opts?: { discipline?: string; limit?: number; offset?: number }
@@ -78,9 +90,11 @@ export async function createActivity(activity: {
   duration: number;
   pace: number;
   points_earned: number;
+  date?: string;
   distance_bonus?: number;
   pace_bonus?: number;
   source?: string;
+  external_id?: string;
 }) {
   const { data, error } = await supabase
     .from("activities")
@@ -92,15 +106,11 @@ export async function createActivity(activity: {
 }
 
 export async function deleteActivity(activityId: string) {
-  const { error } = await supabase
-    .from("activities")
-    .delete()
-    .eq("id", activityId);
+  const { error } = await supabase.from("activities").delete().eq("id", activityId);
   if (error) throw error;
 }
 
 // ---------- WORKOUT LOGS ----------
-
 export async function listWorkoutLogs(
   userId: string,
   opts?: { discipline?: string; limit?: number }
@@ -124,11 +134,12 @@ export async function createWorkoutLog(log: {
   discipline: string;
   workout_type: string;
   duration: number;
-  distance?: number;
+  distance?: number | null;
   effort: number;
-  indoor_outdoor?: "indoor" | "outdoor";
+  indoor_outdoor?: "indoor" | "outdoor" | null;
   notes?: string;
   points_earned: number;
+  date?: string;
 }) {
   const { data, error } = await supabase
     .from("workout_logs")
@@ -140,15 +151,14 @@ export async function createWorkoutLog(log: {
 }
 
 // ---------- RANK POINTS ----------
-
-export async function getRankPoints(userId: string) {
+export async function getRankPoints(userId: string): Promise<DisciplinePoints> {
   const { data, error } = await supabase
     .from("rank_points")
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
 
-  const result = { swim: 0, bike: 0, run: 0 };
+  const result: DisciplinePoints = { swim: 0, bike: 0, run: 0 };
   for (const row of data ?? []) {
     if (row.discipline === "swim") result.swim = row.total_points;
     if (row.discipline === "bike") result.bike = row.total_points;
@@ -157,20 +167,46 @@ export async function getRankPoints(userId: string) {
   return result;
 }
 
-// ---------- STREAKS ----------
+export async function upsertRankPoints(userId: string, points: DisciplinePoints) {
+  const payload = (["swim", "bike", "run"] as Discipline[]).map((discipline) => ({
+    user_id: userId,
+    discipline,
+    total_points: points[discipline],
+    updated_at: new Date().toISOString(),
+  }));
+  const { error } = await supabase.from("rank_points").upsert(payload, {
+    onConflict: "user_id,discipline",
+  });
+  if (error) throw error;
+}
 
+// ---------- STREAKS ----------
 export async function getStreak(userId: string) {
   const { data, error } = await supabase
     .from("streaks")
     .select("*")
     .eq("user_id", userId)
     .single();
-  if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
+  if (error && error.code !== "PGRST116") throw error;
   return data ?? { current_streak: 0, longest_streak: 0, last_activity_date: null };
 }
 
-// ---------- MILESTONES ----------
+export async function upsertStreak(
+  userId: string,
+  streak: { current_streak: number; longest_streak: number; last_activity_date: string | null }
+) {
+  const { error } = await supabase.from("streaks").upsert(
+    {
+      user_id: userId,
+      ...streak,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+  if (error) throw error;
+}
 
+// ---------- MILESTONES ----------
 export async function listMilestones(userId: string) {
   const { data, error } = await supabase
     .from("milestones")
@@ -199,7 +235,6 @@ export async function upsertMilestone(milestone: {
 }
 
 // ---------- RACE GOALS ----------
-
 export async function listRaceGoals(userId: string) {
   const { data, error } = await supabase
     .from("race_goals")
@@ -226,10 +261,7 @@ export async function createRaceGoal(goal: {
   return data;
 }
 
-export async function updateRaceGoal(
-  goalId: string,
-  updates: Record<string, unknown>
-) {
+export async function updateRaceGoal(goalId: string, updates: Record<string, unknown>) {
   const { data, error } = await supabase
     .from("race_goals")
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -245,12 +277,67 @@ export async function deleteRaceGoal(goalId: string) {
   if (error) throw error;
 }
 
-// ---------- PERSONAL BESTS ----------
+export async function clearRaceGoalsForUser(userId: string) {
+  const { error } = await supabase.from("race_goals").delete().eq("user_id", userId);
+  if (error) throw error;
+}
 
-export async function listPersonalBests(
+export async function saveRaceGoalEvent(
   userId: string,
-  discipline?: string
+  event: { id: string; name: string; date: string; distance: "70.3" | "Full" | "5150" }
 ) {
+  await clearRaceGoalsForUser(userId);
+
+  const payloadNew = {
+    user_id: userId,
+    event_id: event.id,
+    event_name: event.name,
+    event_date: event.date,
+    race_type: rankTypeFromDistance(event.distance),
+    race_name: event.name,
+    race_date: event.date,
+    goal_type: "finish",
+  };
+
+  const insertNew = await supabase.from("race_goals").insert(payloadNew).select().single();
+  if (!insertNew.error) return insertNew.data;
+
+  const payloadLegacy = {
+    user_id: userId,
+    race_type: rankTypeFromDistance(event.distance),
+    race_name: event.name,
+    race_date: event.date,
+    goal_type: "finish",
+  };
+  const insertLegacy = await supabase.from("race_goals").insert(payloadLegacy).select().single();
+  if (insertLegacy.error) throw insertLegacy.error;
+  return insertLegacy.data;
+}
+
+export async function getLatestRaceGoalEvent(userId: string): Promise<PersistedRaceGoalEvent | null> {
+  const { data, error } = await supabase
+    .from("race_goals")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    id: String(data.id),
+    user_id: String(data.user_id),
+    event_id: String(data.event_id ?? data.race_name ?? data.id),
+    event_name: String(data.event_name ?? data.race_name ?? ""),
+    event_date: rowDate(data.event_date ?? data.race_date),
+    created_at: rowDate(data.created_at),
+  };
+}
+
+// ---------- PERSONAL BESTS ----------
+export async function listPersonalBests(userId: string, discipline?: string) {
   let query = supabase
     .from("personal_bests")
     .select("*")
@@ -264,7 +351,6 @@ export async function listPersonalBests(
 }
 
 // ---------- LEADERBOARD ----------
-
 export async function getLeaderboardOverall(limit = 50) {
   const { data, error } = await supabase
     .from("leaderboard_overall")
@@ -275,10 +361,7 @@ export async function getLeaderboardOverall(limit = 50) {
   return data ?? [];
 }
 
-export async function getLeaderboardByDiscipline(
-  discipline: "swim" | "bike" | "run",
-  limit = 50
-) {
+export async function getLeaderboardByDiscipline(discipline: "swim" | "bike" | "run", limit = 50) {
   const { data, error } = await supabase
     .from("leaderboard_by_discipline")
     .select("*")
@@ -290,13 +373,15 @@ export async function getLeaderboardByDiscipline(
 }
 
 // ---------- FRIENDSHIPS ----------
-
 export async function listFriends(userId: string) {
   const { data, error } = await supabase
     .from("friendships")
-    .select("*, friend:profiles!friendships_friend_id_fkey(id, display_name, avatar_url)")
-    .eq("user_id", userId)
-    .eq("status", "accepted");
+    .select(
+      "id,user_id,friend_id,status,created_at,user:profiles!friendships_user_id_fkey(id,display_name,avatar_url),friend:profiles!friendships_friend_id_fkey(id,display_name,avatar_url)"
+    )
+    .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+    .eq("status", "accepted")
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -304,7 +389,9 @@ export async function listFriends(userId: string) {
 export async function listFriendRequests(userId: string) {
   const { data, error } = await supabase
     .from("friendships")
-    .select("*, user:profiles!friendships_user_id_fkey(id, display_name, avatar_url)")
+    .select(
+      "*, user:profiles!friendships_user_id_fkey(id, display_name, avatar_url)"
+    )
     .eq("friend_id", userId)
     .eq("status", "pending");
   if (error) throw error;
@@ -332,8 +419,81 @@ export async function acceptFriendRequest(requestId: string) {
   return data;
 }
 
-// ---------- RANK HISTORY ----------
+export async function searchProfiles(query: string, excludeUserId: string, limit = 20) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,display_name,avatar_url")
+    .ilike("display_name", `%${query}%`)
+    .neq("id", excludeUserId)
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
 
+export async function listFriendSummaries(userId: string): Promise<FriendProfileSummary[]> {
+  const friendships = await listFriends(userId);
+  if (friendships.length === 0) return [];
+
+  const friendProfiles = friendships.map((row: any) => {
+    const isRequester = row.user_id === userId;
+    const profile = isRequester ? row.friend : row.user;
+    return {
+      id: String(profile?.id ?? ""),
+      display_name: String(profile?.display_name ?? "Athlete"),
+      avatar_url: (profile?.avatar_url as string | null) ?? null,
+    };
+  });
+
+  const friendIds = friendProfiles.map((f) => f.id).filter(Boolean);
+  if (friendIds.length === 0) return [];
+
+  const [rankRows, raceRows] = await Promise.all([
+    supabase.from("rank_points").select("*").in("user_id", friendIds),
+    supabase
+      .from("race_goals")
+      .select("*")
+      .in("user_id", friendIds)
+      .order("created_at", { ascending: false }),
+  ]);
+  if (rankRows.error) throw rankRows.error;
+  if (raceRows.error) throw raceRows.error;
+
+  const pointsByUser = new Map<string, DisciplinePoints>();
+  for (const id of friendIds) pointsByUser.set(id, { swim: 0, bike: 0, run: 0 });
+
+  for (const row of rankRows.data ?? []) {
+    const current = pointsByUser.get(String(row.user_id)) ?? { swim: 0, bike: 0, run: 0 };
+    if (row.discipline === "swim") current.swim = row.total_points ?? 0;
+    if (row.discipline === "bike") current.bike = row.total_points ?? 0;
+    if (row.discipline === "run") current.run = row.total_points ?? 0;
+    pointsByUser.set(String(row.user_id), current);
+  }
+
+  const latestRaceByUser = new Map<string, string | null>();
+  for (const row of raceRows.data ?? []) {
+    const uid = String(row.user_id);
+    if (!latestRaceByUser.has(uid)) {
+      latestRaceByUser.set(uid, (row.event_name ?? row.race_name ?? null) as string | null);
+    }
+  }
+
+  return friendProfiles.map((profile) => {
+    const points = pointsByUser.get(profile.id) ?? { swim: 0, bike: 0, run: 0 };
+    const weighted = Math.floor(points.swim * 0.3 + points.bike * 0.4 + points.run * 0.3);
+    const rank = getRankForPoints(weighted);
+    return {
+      id: profile.id,
+      displayName: profile.display_name,
+      avatarUrl: profile.avatar_url,
+      overallPoints: weighted,
+      rankTier: rank.tier as RankTier,
+      rankColor: rank.color,
+      targetRaceEventName: latestRaceByUser.get(profile.id) ?? null,
+    };
+  });
+}
+
+// ---------- RANK HISTORY ----------
 export async function getRankHistory(userId: string, limit = 12) {
   const { data, error } = await supabase
     .from("rank_history")
@@ -346,7 +506,6 @@ export async function getRankHistory(userId: string, limit = 12) {
 }
 
 // ---------- SUBSCRIPTIONS ----------
-
 export async function getActiveSubscription(userId: string) {
   const { data, error } = await supabase
     .from("subscriptions")
@@ -356,4 +515,119 @@ export async function getActiveSubscription(userId: string) {
     .single();
   if (error && error.code !== "PGRST116") throw error;
   return data ?? null;
+}
+
+// ---------- CHAT ----------
+export async function listMessagesBetween(userId: string, friendId: string): Promise<ChatMessage[]> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .or(
+      `and(sender_id.eq.${userId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${userId})`
+    )
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.id),
+    senderId: String(row.sender_id),
+    receiverId: String(row.receiver_id),
+    text: String(row.text ?? ""),
+    createdAt: rowDate(row.created_at),
+    read: Boolean(row.read),
+  }));
+}
+
+export async function listConversations(userId: string): Promise<ChatConversation[]> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const latestByFriend = new Map<string, ChatConversation>();
+  for (const row of data ?? []) {
+    const senderId = String(row.sender_id);
+    const receiverId = String(row.receiver_id);
+    const friendId = senderId === userId ? receiverId : senderId;
+    const existing = latestByFriend.get(friendId);
+    const createdAt = rowDate(row.created_at);
+    if (!existing) {
+      latestByFriend.set(friendId, {
+        friendId,
+        friendName: "Athlete",
+        friendAvatarUrl: null,
+        lastMessage: String(row.text ?? ""),
+        lastMessageAt: createdAt,
+        unreadCount: receiverId === userId && !row.read ? 1 : 0,
+      });
+      continue;
+    }
+    if (receiverId === userId && !row.read) {
+      existing.unreadCount += 1;
+    }
+  }
+
+  return Array.from(latestByFriend.values()).sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+}
+
+export async function sendMessage(senderId: string, receiverId: string, text: string): Promise<ChatMessage> {
+  const { data, error } = await supabase
+    .from("messages")
+    .insert({
+      sender_id: senderId,
+      receiver_id: receiverId,
+      text: text.trim(),
+      read: false,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  return {
+    id: String(data.id),
+    senderId: String(data.sender_id),
+    receiverId: String(data.receiver_id),
+    text: String(data.text ?? ""),
+    createdAt: rowDate(data.created_at),
+    read: Boolean(data.read),
+  };
+}
+
+export async function markConversationRead(userId: string, friendId: string) {
+  const { error } = await supabase
+    .from("messages")
+    .update({ read: true })
+    .eq("receiver_id", userId)
+    .eq("sender_id", friendId)
+    .eq("read", false);
+  if (error) throw error;
+}
+
+export function subscribeToUserMessages(
+  userId: string,
+  onInsert: (message: ChatMessage) => void
+) {
+  return supabase
+    .channel(`messages:${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "messages" },
+      (payload: any) => {
+        const row = payload.new;
+        const senderId = String(row.sender_id);
+        const receiverId = String(row.receiver_id);
+        if (senderId !== userId && receiverId !== userId) return;
+        onInsert({
+          id: String(row.id),
+          senderId,
+          receiverId,
+          text: String(row.text ?? ""),
+          createdAt: rowDate(row.created_at),
+          read: Boolean(row.read),
+        });
+      }
+    )
+    .subscribe();
 }

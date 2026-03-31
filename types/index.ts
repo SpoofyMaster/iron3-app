@@ -156,6 +156,16 @@ export interface WeeklyStats {
   totalPoints: number;
 }
 
+export interface PerformanceStats {
+  totalSwimDistance: number;
+  totalBikeDistance: number;
+  totalRunDistance: number;
+  totalTrainingTime: number;
+  workoutsCount: number;
+  currentStreak: number;
+  rankProgressPercentage: number;
+}
+
 export interface OnboardingState {
   step: number;
   experienceLevel: ExperienceLevel | null;
@@ -298,6 +308,34 @@ export interface FriendLeaderboardEntry {
   tierColor: string;
   isFriend: boolean;
   avatarLetter: string;
+}
+
+export interface FriendProfileSummary {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  overallPoints: number;
+  rankTier: RankTier;
+  rankColor: string;
+  targetRaceEventName: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface ChatConversation {
+  friendId: string;
+  friendName: string;
+  friendAvatarUrl: string | null;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
 }
 
 // Health Integration types (Task 8)

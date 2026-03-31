@@ -5,7 +5,7 @@ import {
   fetchRecentWorkouts,
   calculatePoints,
   HealthWorkoutData,
-} from "./healthKit";
+} from "./healthkit";
 
 export interface SyncResult {
   synced: number;
@@ -52,14 +52,14 @@ export async function syncHealthWorkouts(
   const workouts = await fetchRecentWorkouts(days);
   
   // Filter to only swim/bike/run
-  const triWorkouts = workouts.filter((w) => w.discipline !== null);
+  const triWorkouts = workouts.filter((w: HealthWorkoutData) => w.discipline !== null);
 
   if (triWorkouts.length === 0) {
     return result;
   }
 
   // Get already-imported external IDs to avoid duplicates
-  const externalIds = triWorkouts.map((w) => w.id);
+  const externalIds = triWorkouts.map((w: HealthWorkoutData) => w.id);
   const { data: existing } = await supabase
     .from("activities")
     .select("external_id")

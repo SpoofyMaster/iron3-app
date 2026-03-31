@@ -81,12 +81,8 @@ export default function ConnectedDevicesScreen() {
           "🎉 Sync Complete",
           `Imported ${result.synced} new workout${result.synced > 1 ? "s" : ""}!\n+${totalPoints} rank points earned.`
         );
-        // Refresh profile + activities to update points & UI
-        const store = useAppStore.getState();
-        await Promise.all([
-          store.fetchProfile(currentUserId),
-          store.fetchActivities(currentUserId),
-        ]);
+        // Refresh all persisted user data
+        await useAppStore.getState().hydrateUserData(currentUserId);
       } else if (result.skipped > 0) {
         Alert.alert("Up to Date", "All workouts already synced. Nothing new to import.");
       } else {

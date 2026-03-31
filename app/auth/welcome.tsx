@@ -89,7 +89,7 @@ export default function WelcomeScreen() {
     setLoadingApple(false);
     if (result.success && result.user) {
       setAuth(true, result.user.id);
-      await useAppStore.getState().fetchProfile(result.user.id);
+      await useAppStore.getState().hydrateUserData(result.user.id);
     } else if (result.error && result.error !== "cancelled") {
       Alert.alert("Apple Sign In", result.error);
     }
@@ -101,7 +101,7 @@ export default function WelcomeScreen() {
     setLoadingGoogle(false);
     if (result.success && result.user) {
       setAuth(true, result.user.id);
-      await useAppStore.getState().fetchProfile(result.user.id);
+      await useAppStore.getState().hydrateUserData(result.user.id);
     } else if (result.error && result.error !== "cancelled") {
       Alert.alert("Google Sign In", result.error);
     }

@@ -157,7 +157,7 @@ export default function LogScreen() {
   }, [distance, customDistance]);
 
   const handleLog = useCallback(() => {
-    logWorkout({
+    void logWorkout({
       discipline,
       workoutType,
       duration: effectiveDuration * 60,
