@@ -3,6 +3,29 @@ import { ChatConversation, ChatMessage, Discipline, FriendProfileSummary, RankTi
 import { supabase } from "./supabase";
 
 type DisciplinePoints = { swim: number; bike: number; run: number };
+type LeaderboardScope = "friends" | "global" | "local";
+type LeaderboardDiscipline = "overall" | "10k" | Discipline;
+
+export interface SupabaseLeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  points: number;
+  tier: RankTier;
+  tierColor: string;
+  isFriend: boolean;
+}
+
+export interface AthleteSummary {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  overallPoints: number;
+  rankTier: RankTier;
+  rankColor: string;
+  targetRaceEventName: string | null;
+}
 
 export interface PersistedRaceGoalEvent {
   id: string;
@@ -370,6 +393,151 @@ export async function getLeaderboardByDiscipline(discipline: "swim" | "bike" | "
     .limit(limit);
   if (error) throw error;
   return data ?? [];
+}
+
+function disciplinePointsToScore(points: DisciplinePoints, discipline: LeaderboardDiscipline): number {
+  if (discipline === "swim") return Math.floor(points.swim);
+  if (discipline === "bike") return Math.floor(points.bike);
+  if (discipline === "run" || discipline === "10k") return Math.floor(points.run);
+  return Math.floor(points.swim * 0.3 + points.bike * 0.4 + points.run * 0.3);
+}
+
+export async function getSupabaseLeaderboard(
+  currentUserId: string,
+  opts?: { scope?: LeaderboardScope; discipline?: LeaderboardDiscipline; limit?: number }
+): Promise<SupabaseLeaderboardEntry[]> {
+  const scope = opts?.scope ?? "friends";
+  const discipline = opts?.discipline ?? "overall";
+  const limit = opts?.limit ?? 100;
+  const disciplines: Discipline[] =
+    discipline === "overall" ? ["swim", "bike", "run"] : discipline === "10k" ? ["run"] : [discipline];
+
+  const [rankRows, friendships, currentProfile] = await Promise.all([
+    supabase
+      .from("rank_points")
+      .select("user_id,discipline,total_points,profile:profiles!rank_points_user_id_fkey(id,display_name,avatar_url)")
+      .in("discipline", disciplines),
+    listFriends(currentUserId).catch(() => []),
+    supabase
+      .from("profiles")
+      .select("id,display_name,avatar_url")
+      .eq("id", currentUserId)
+      .maybeSingle(),
+  ]);
+
+  if (rankRows.error) throw rankRows.error;
+  if (currentProfile.error) throw currentProfile.error;
+
+  const friendIds = new Set<string>();
+  for (const row of friendships as any[]) {
+    const isRequester = String(row.user_id) === currentUserId;
+    const friend = isRequester ? row.friend : row.user;
+    if (friend?.id) friendIds.add(String(friend.id));
+  }
+
+  const byUser = new Map<
+    string,
+    { displayName: string; avatarUrl: string | null; points: DisciplinePoints; isFriend: boolean }
+  >();
+
+  if (currentProfile.data) {
+    byUser.set(String(currentProfile.data.id), {
+      displayName: String(currentProfile.data.display_name ?? "You"),
+      avatarUrl: (currentProfile.data.avatar_url as string | null) ?? null,
+      points: { swim: 0, bike: 0, run: 0 },
+      isFriend: false,
+    });
+  }
+
+  for (const row of friendships as any[]) {
+    const isRequester = String(row.user_id) === currentUserId;
+    const profile = isRequester ? row.friend : row.user;
+    if (!profile?.id) continue;
+    const profileId = String(profile.id);
+    byUser.set(profileId, {
+      displayName: String(profile.display_name ?? "Athlete"),
+      avatarUrl: (profile.avatar_url as string | null) ?? null,
+      points: byUser.get(profileId)?.points ?? { swim: 0, bike: 0, run: 0 },
+      isFriend: true,
+    });
+  }
+
+  for (const row of rankRows.data ?? []) {
+    const userId = String(row.user_id);
+    const profile = Array.isArray((row as any).profile) ? (row as any).profile[0] : (row as any).profile;
+    const existing = byUser.get(userId) ?? {
+      displayName: String(profile?.display_name ?? "Athlete"),
+      avatarUrl: (profile?.avatar_url as string | null) ?? null,
+      points: { swim: 0, bike: 0, run: 0 },
+      isFriend: friendIds.has(userId),
+    };
+    if (row.discipline === "swim") existing.points.swim = Number(row.total_points ?? 0);
+    if (row.discipline === "bike") existing.points.bike = Number(row.total_points ?? 0);
+    if (row.discipline === "run") existing.points.run = Number(row.total_points ?? 0);
+    existing.isFriend = friendIds.has(userId);
+    byUser.set(userId, existing);
+  }
+
+  let users = Array.from(byUser.entries()).map(([userId, info]) => ({
+    userId,
+    displayName: info.displayName,
+    avatarUrl: info.avatarUrl,
+    points: disciplinePointsToScore(info.points, discipline),
+    isFriend: info.isFriend,
+  }));
+
+  if (scope === "friends") {
+    users = users.filter((entry) => entry.userId === currentUserId || friendIds.has(entry.userId));
+  }
+  // Local fallback: until location metadata is available in profiles, keep parity with global.
+
+  users.sort((a, b) => b.points - a.points);
+
+  return users.slice(0, limit).map((entry, index) => {
+    const rank = getRankForPoints(entry.points);
+    return {
+      rank: index + 1,
+      userId: entry.userId,
+      displayName: entry.displayName,
+      avatarUrl: entry.avatarUrl,
+      points: entry.points,
+      tier: rank.tier as RankTier,
+      tierColor: rank.color,
+      isFriend: entry.isFriend,
+    };
+  });
+}
+
+export async function getAthleteSummary(userId: string): Promise<AthleteSummary | null> {
+  const [profileRes, rankRes, raceGoal] = await Promise.all([
+    supabase.from("profiles").select("id,display_name,avatar_url").eq("id", userId).maybeSingle(),
+    supabase.from("rank_points").select("discipline,total_points").eq("user_id", userId),
+    getLatestRaceGoalEvent(userId).catch(() => null),
+  ]);
+
+  if (profileRes.error) throw profileRes.error;
+  if (rankRes.error) throw rankRes.error;
+  if (!profileRes.data) return null;
+
+  const points: DisciplinePoints = { swim: 0, bike: 0, run: 0 };
+  for (const row of rankRes.data ?? []) {
+    if (row.discipline === "swim") points.swim = Number(row.total_points ?? 0);
+    if (row.discipline === "bike") points.bike = Number(row.total_points ?? 0);
+    if (row.discipline === "run") points.run = Number(row.total_points ?? 0);
+  }
+
+  const overallPoints = disciplinePointsToScore(points, "overall");
+  const rank = getRankForPoints(overallPoints);
+
+  return {
+    id: String(profileRes.data.id),
+    displayName: String(profileRes.data.display_name ?? "Athlete"),
+    avatarUrl: (profileRes.data.avatar_url as string | null) ?? null,
+    overallPoints,
+    rankTier: rank.tier as RankTier,
+    rankColor: rank.color,
+    targetRaceEventName: raceGoal?.event_name ?? null,
+  };
 }
 
 // ---------- FRIENDSHIPS ----------

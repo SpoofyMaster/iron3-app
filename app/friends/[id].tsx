@@ -12,7 +12,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { GlassCard, RankBadge, SectionHeader } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { useAppStore } from "@/store/useAppStore";
-import { listActivities, listWorkoutLogs, getLatestRaceGoalEvent } from "@/lib/dataService";
+import {
+  listActivities,
+  listWorkoutLogs,
+  getLatestRaceGoalEvent,
+  getAthleteSummary,
+  sendFriendRequest,
+} from "@/lib/dataService";
+import { FriendProfileSummary } from "@/types";
 
 type FriendActivity = {
   id: string;
@@ -36,12 +43,49 @@ export default function FriendProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const friendProfiles = useAppStore((s) => s.friendProfiles);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const refreshFriends = useAppStore((s) => s.refreshFriends);
 
   const friend = useMemo(() => friendProfiles.find((item) => item.id === id), [friendProfiles, id]);
+  const [athlete, setAthlete] = useState<FriendProfileSummary | null>(friend ?? null);
   const [activities, setActivities] = useState<FriendActivity[]>([]);
   const [workouts, setWorkouts] = useState<FriendWorkout[]>([]);
   const [targetRace, setTargetRace] = useState<string | null>(friend?.targetRaceEventName ?? null);
+  const [followRequested, setFollowRequested] = useState(false);
+  const [sendingFollow, setSendingFollow] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const isSelf = !!id && id === currentUserId;
+  const isFollowing = !!friend;
+
+  useEffect(() => {
+    if (friend) {
+      setAthlete(friend);
+      setTargetRace(friend.targetRaceEventName ?? null);
+    }
+  }, [friend]);
+
+  useEffect(() => {
+    const loadAthleteSummary = async () => {
+      if (!id) return;
+      try {
+        const summary = await getAthleteSummary(id);
+        if (!summary) return;
+        setAthlete({
+          id: summary.id,
+          displayName: summary.displayName,
+          avatarUrl: summary.avatarUrl,
+          overallPoints: summary.overallPoints,
+          rankTier: summary.rankTier,
+          rankColor: summary.rankColor,
+          targetRaceEventName: summary.targetRaceEventName,
+        });
+      } catch (error) {
+        console.error("Failed to load athlete summary:", error);
+      }
+    };
+    loadAthleteSummary();
+  }, [id]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -77,7 +121,21 @@ export default function FriendProfileScreen() {
     return byDiscipline;
   }, [activities]);
 
-  if (!friend) {
+  const handleFollow = async () => {
+    if (!currentUserId || !id || isSelf || isFollowing || followRequested || sendingFollow) return;
+    setSendingFollow(true);
+    try {
+      await sendFriendRequest(currentUserId, id);
+      await refreshFriends(currentUserId);
+      setFollowRequested(true);
+    } catch (error) {
+      console.error("Failed to follow athlete:", error);
+    } finally {
+      setSendingFollow(false);
+    }
+  };
+
+  if (!athlete) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
@@ -98,7 +156,7 @@ export default function FriendProfileScreen() {
             <Ionicons name="arrow-back" size={20} color={colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push(`/chat/${friend.id}` as never)}
+            onPress={() => router.push(`/chat/${athlete.id}` as never)}
             style={styles.iconButton}
             activeOpacity={0.7}
           >
@@ -108,14 +166,39 @@ export default function FriendProfileScreen() {
 
         <GlassCard style={styles.profileCard} variant="highlighted">
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{friend.displayName.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarText}>{athlete.displayName.charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.name}>{friend.displayName}</Text>
-          <RankBadge tier={friend.rankTier} tierColor={friend.rankColor} size="md" />
-          <Text style={styles.rankPoints}>{friend.overallPoints.toLocaleString()} points</Text>
+          <Text style={styles.name}>{athlete.displayName}</Text>
+          <RankBadge tier={athlete.rankTier} tierColor={athlete.rankColor} size="md" />
+          <Text style={styles.rankPoints}>{athlete.overallPoints.toLocaleString()} RP</Text>
           <Text style={styles.targetRaceLabel}>
             {targetRace ? `Target race: ${targetRace}` : "No target race selected"}
           </Text>
+          {!isSelf ? (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.actionBtn,
+                  (isFollowing || followRequested) && styles.actionBtnDisabled,
+                ]}
+                onPress={handleFollow}
+                activeOpacity={0.8}
+                disabled={isFollowing || followRequested || sendingFollow}
+              >
+                <Text style={styles.actionBtnText}>
+                  {isFollowing ? "FOLLOWING" : followRequested ? "REQUESTED" : sendingFollow ? "SENDING..." : "FOLLOW"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageBtn}
+                onPress={() => router.push(`/chat/${athlete.id}` as never)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.text} />
+                <Text style={styles.messageBtnText}>MESSAGE</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </GlassCard>
 
         <SectionHeader title="Performance Stats" />
@@ -233,6 +316,52 @@ const styles = StyleSheet.create({
   targetRaceLabel: {
     color: colors.textMuted,
     fontSize: fontSize.xs,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+    width: "100%",
+    justifyContent: "center",
+  },
+  actionBtn: {
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary + "60",
+    backgroundColor: colors.primary + "20",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 104,
+    alignItems: "center",
+  },
+  actionBtnDisabled: {
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
+  },
+  actionBtnText: {
+    color: colors.primary,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.6,
+  },
+  messageBtn: {
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 104,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  messageBtnText: {
+    color: colors.text,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 0.5,
   },
   statsRow: { flexDirection: "row", gap: 10 },
   statCard: {
