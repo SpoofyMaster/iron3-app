@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,9 +15,19 @@ import { GlassCard, RankBadge } from "@/components";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { useAppStore } from "@/store/useAppStore";
 import { LeaderboardTab } from "@/types";
-import { getSupabaseLeaderboard, SupabaseLeaderboardEntry } from "@/lib/dataService";
+import {
+  getSupabaseLeaderboard,
+  SupabaseLeaderboardEntry,
+  searchProfiles,
+  sendFriendRequest,
+} from "@/lib/dataService";
 
 type DisciplineFilter = "overall" | "10k" | "swim" | "bike" | "run";
+type SearchProfileRow = {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+};
 
 const TAB_OPTIONS: { key: LeaderboardTab; label: string }[] = [
   { key: "friends", label: "FRIENDS" },
@@ -36,6 +47,8 @@ export default function FriendsTabScreen() {
   const router = useRouter();
   const currentUserId = useAppStore((s) => s.currentUserId);
   const chats = useAppStore((s) => s.chatConversations);
+  const friendProfiles = useAppStore((s) => s.friendProfiles);
+  const refreshFriends = useAppStore((s) => s.refreshFriends);
   const fallbackFriendsLeaderboard = useAppStore((s) => s.friendsLeaderboard);
 
   const storeTab = useAppStore((s) => s.friendsLeaderboardTab);
@@ -46,6 +59,13 @@ export default function FriendsTabScreen() {
   const [showDisciplineMenu, setShowDisciplineMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchProfileRow[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [requestedFollowIds, setRequestedFollowIds] = useState<string[]>([]);
+  const [sendingFollowIds, setSendingFollowIds] = useState<string[]>([]);
 
   useEffect(() => {
     setActiveTab(storeTab);
@@ -100,6 +120,62 @@ export default function FriendsTabScreen() {
     () => chats.reduce((sum, conversation) => sum + conversation.unreadCount, 0),
     [chats]
   );
+  const friendIdSet = useMemo(() => new Set(friendProfiles.map((friend) => friend.id)), [friendProfiles]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!isSearchOpen || !currentUserId || query.length < 2) {
+      setSearchResults([]);
+      setSearchError(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSearchLoading(true);
+    setSearchError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const rows = (await searchProfiles(query, currentUserId, 20)) as SearchProfileRow[];
+        if (!cancelled) setSearchResults(rows);
+      } catch (searchErr) {
+        console.error("Failed to search profiles:", searchErr);
+        if (!cancelled) {
+          setSearchError("Unable to search athletes right now.");
+          setSearchResults([]);
+        }
+      } finally {
+        if (!cancelled) setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isSearchOpen, searchQuery, currentUserId]);
+
+  const handleFollowFromSearch = async (userId: string) => {
+    if (!currentUserId || friendIdSet.has(userId) || requestedFollowIds.includes(userId)) return;
+
+    setSendingFollowIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+    try {
+      await sendFriendRequest(currentUserId, userId);
+      setRequestedFollowIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+      await refreshFriends(currentUserId);
+    } catch (followErr: any) {
+      // Treat duplicate pending requests as already requested.
+      const message = String(followErr?.message ?? "");
+      if (message.toLowerCase().includes("duplicate")) {
+        setRequestedFollowIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+        return;
+      }
+      console.error("Failed to send follow request:", followErr);
+    } finally {
+      setSendingFollowIds((prev) => prev.filter((id) => id !== userId));
+    }
+  };
 
   const topThree = leaderboard.slice(0, 3);
   const rankedList = leaderboard.slice(3);
@@ -110,8 +186,16 @@ export default function FriendsTabScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.headerRow}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.title}>RANKINGS</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.searchIconButton}
+            activeOpacity={0.75}
+            onPress={() => setIsSearchOpen((prev) => !prev)}
+          >
+            <Ionicons name="search-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.title}>RANKINGS</Text>
+        </View>
         <TouchableOpacity
           style={styles.chatIconButton}
           activeOpacity={0.75}
@@ -127,6 +211,103 @@ export default function FriendsTabScreen() {
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {isSearchOpen ? (
+          <GlassCard style={styles.searchCard}>
+            <View style={styles.searchInputRow}>
+              <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search athletes by name"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 ? (
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setSearchQuery("")}>
+                  <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {searchQuery.trim().length < 2 ? (
+              <Text style={styles.searchHint}>Type at least 2 letters to search.</Text>
+            ) : searchLoading ? (
+              <View style={styles.searchStatusRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.searchHint}>Searching...</Text>
+              </View>
+            ) : searchError ? (
+              <Text style={styles.searchHint}>{searchError}</Text>
+            ) : searchResults.length === 0 ? (
+              <Text style={styles.searchHint}>No athletes found.</Text>
+            ) : (
+              <View style={styles.searchResultsWrap}>
+                {searchResults.map((result, idx) => {
+                  const displayName = result.display_name?.trim() || "Athlete";
+                  const isFriend = friendIdSet.has(result.id);
+                  const isRequested = requestedFollowIds.includes(result.id);
+                  const isSending = sendingFollowIds.includes(result.id);
+
+                  return (
+                    <View key={result.id}>
+                      <View style={styles.searchResultRow}>
+                        <TouchableOpacity
+                          style={styles.searchResultProfileTap}
+                          activeOpacity={0.8}
+                          onPress={() => router.push(`/friends/${result.id}` as never)}
+                        >
+                          <View style={styles.searchAvatar}>
+                            <Text style={styles.searchAvatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+                          </View>
+                          <Text style={styles.searchName} numberOfLines={1}>
+                            {displayName}
+                          </Text>
+                        </TouchableOpacity>
+                        <View style={styles.searchActionButtons}>
+                          <TouchableOpacity
+                            style={styles.searchViewButton}
+                            activeOpacity={0.8}
+                            onPress={() => router.push(`/friends/${result.id}` as never)}
+                          >
+                            <Text style={styles.searchViewButtonText}>VIEW</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.searchFollowButton,
+                              (isFriend || isRequested) && styles.searchFollowButtonDisabled,
+                            ]}
+                            activeOpacity={0.8}
+                            disabled={isFriend || isRequested || isSending}
+                            onPress={() => handleFollowFromSearch(result.id)}
+                          >
+                            <Text
+                              style={[
+                                styles.searchFollowButtonText,
+                                (isFriend || isRequested) && styles.searchFollowButtonTextDisabled,
+                              ]}
+                            >
+                              {isFriend
+                                ? "FOLLOWING"
+                                : isRequested
+                                ? "REQUESTED"
+                                : isSending
+                                ? "SENDING..."
+                                : "FOLLOW"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      {idx < searchResults.length - 1 ? <View style={styles.divider} /> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </GlassCard>
+        ) : null}
+
         <View style={styles.tabRow}>
           {TAB_OPTIONS.map((tab) => {
             const active = tab.key === activeTab;
@@ -294,14 +475,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: 6,
   },
-  headerSpacer: {
-    width: 36,
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   title: {
     color: colors.text,
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.extrabold,
     letterSpacing: 1.2,
+  },
+  searchIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
   },
   chatIconButton: {
     width: 36,
@@ -340,6 +533,116 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: 32,
     gap: 14,
+  },
+  searchCard: {
+    gap: 10,
+  },
+  searchInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceGlass,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: fontSize.sm,
+    paddingVertical: 0,
+  },
+  searchHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  searchStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchResultsWrap: {
+    marginTop: 4,
+  },
+  searchResultRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    paddingVertical: 10,
+  },
+  searchResultProfileTap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  searchActionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchViewButton: {
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 56,
+    alignItems: "center",
+  },
+  searchViewButtonText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.4,
+  },
+  searchAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceGlass,
+    borderWidth: 1,
+    borderColor: colors.surfaceGlassBorder,
+  },
+  searchAvatarText: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+  searchName: {
+    flex: 1,
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+  searchFollowButton: {
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary + "66",
+    backgroundColor: colors.primary + "1F",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 88,
+    alignItems: "center",
+  },
+  searchFollowButtonDisabled: {
+    borderColor: colors.surfaceGlassBorder,
+    backgroundColor: colors.surfaceGlass,
+  },
+  searchFollowButtonText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.4,
+  },
+  searchFollowButtonTextDisabled: {
+    color: colors.textMuted,
   },
   tabRow: {
     flexDirection: "row",
