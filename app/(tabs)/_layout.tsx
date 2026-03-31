@@ -17,13 +17,13 @@ const TAB_CONFIG: {
   isFab?: boolean;
 }[] = [
   { name: "index", title: "Home", icon: "home-outline", iconFocused: "home" },
-  { name: "ranks", title: "Friends", icon: "people-outline", iconFocused: "people" },
+  { name: "friends", title: "Friends", icon: "people-outline", iconFocused: "people" },
   { name: "log", title: "", icon: "add", iconFocused: "add", isFab: true },
   { name: "progress", title: "Ranks", icon: "trophy-outline", iconFocused: "trophy" },
   { name: "profile", title: "Profile", icon: "person-outline", iconFocused: "person" },
 ];
 
-const HIDDEN_SCREENS = ["swim", "bike", "run", "leaderboard"];
+const HIDDEN_SCREENS = ["swim", "bike", "run", "leaderboard", "ranks"];
 
 export default function TabLayout() {
   const router = useRouter();
