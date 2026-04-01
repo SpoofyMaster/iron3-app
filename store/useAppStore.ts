@@ -1278,6 +1278,19 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         : null;
 
+      // Regenerate PREP plan from the persisted race event + profile levels
+      const prepPlan: PrepPlan | null = selectedRaceEvent
+        ? generatePrepPlan(
+            selectedRaceEvent.id,
+            selectedRaceEvent.name,
+            selectedRaceEvent.date,
+            profile.race_distance_goal ?? "70.3",
+            profile.swim_level ?? null,
+            profile.bike_level ?? null,
+            profile.run_level ?? null,
+          )
+        : null;
+
       const rankHistory = (historyRows ?? [])
         .map((row: any) => ({
           date: String(row.snapshot_date),
@@ -1380,6 +1393,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         milestones,
         selectedRaceEvent,
         raceGoal,
+        prepPlan,
         leaderboard,
         friendProfiles,
         friendsLeaderboard,
