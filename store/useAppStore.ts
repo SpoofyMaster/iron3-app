@@ -69,6 +69,7 @@ import {
   mockConnectedDevices,
 } from "@/lib/mockData";
 import { supabase } from "@/lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AppState {
   user: UserProfile;
@@ -736,6 +737,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({ selectedRaceEvent: event, prepPlan: plan, raceGoal });
 
+    try {
+      await AsyncStorage.setItem("iron3_selectedRaceEvent", JSON.stringify(event));
+    } catch (e) {
+      console.warn("AsyncStorage save failed:", e);
+    }
+
     if (state.currentUserId) {
       try {
         await saveRaceGoalEvent(state.currentUserId, {
@@ -745,7 +752,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           distance: event.distance,
         });
       } catch (error) {
-        console.error("Failed to persist selected race event:", error);
+        console.error(
+          "Failed to persist selected race event:",
+          error,
+          JSON.stringify(error),
+        );
       }
     }
   },
@@ -753,6 +764,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearRaceEvent: async () => {
     const userId = get().currentUserId;
     set({ selectedRaceEvent: null, prepPlan: null, raceGoal: null });
+    try {
+      await AsyncStorage.removeItem("iron3_selectedRaceEvent");
+    } catch (e) {}
     if (userId) {
       try {
         await clearRaceGoalsForUser(userId);
@@ -1150,7 +1164,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   // Auth actions
-  setAuth: (isAuthenticated: boolean, userId?: string) =>
+  setAuth: (isAuthenticated: boolean, userId?: string) => {
+    // NOTE: intentionally NOT clearing iron3_selectedRaceEvent on logout
+    // so it survives logout → login as AsyncStorage fallback
     set({
       isAuthenticated,
       currentUserId: userId ?? null,
@@ -1181,7 +1197,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             chatConversations: [],
             performanceStats: emptyPerformanceStats,
           }),
-    }),
+    });
+  },
 
   hydrateUserData: async (userId: string) => {
     set({ isLoading: true });
@@ -1260,13 +1277,22 @@ export const useAppStore = create<AppState>((set, get) => ({
         friends
       );
 
-      const selectedRaceEvent = raceGoalRow
+      let selectedRaceEvent: IronmanEvent | null = raceGoalRow
         ? resolveEventFromPersistedGoal({
             event_id: raceGoalRow.event_id,
             event_name: raceGoalRow.event_name,
             event_date: raceGoalRow.event_date,
           })
         : null;
+
+      if (!selectedRaceEvent) {
+        try {
+          const stored = await AsyncStorage.getItem("iron3_selectedRaceEvent");
+          if (stored) selectedRaceEvent = JSON.parse(stored) as IronmanEvent;
+        } catch (e) {
+          console.warn("AsyncStorage read failed:", e);
+        }
+      }
 
       const raceGoal: RaceGoal | null = selectedRaceEvent
         ? {
