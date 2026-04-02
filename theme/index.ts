@@ -70,6 +70,7 @@ export const colors = {
     Gold: "#FFD700",
     Platinum: "#E5E4E2",
     Diamond: "#00B4D8",
+    Legendary: "#E0115F",
   },
 
   rankGlow: {
@@ -79,6 +80,7 @@ export const colors = {
     Gold: "rgba(255, 215, 0, 0.45)",
     Platinum: "rgba(229, 228, 226, 0.3)",
     Diamond: "rgba(0, 180, 216, 0.5)",
+    Legendary: "rgba(224, 17, 95, 0.55)",
   },
 
   error: "#EF4444",

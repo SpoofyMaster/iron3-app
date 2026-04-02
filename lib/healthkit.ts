@@ -5,6 +5,8 @@
  * Dynamically imported so the app still builds on Android/web.
  */
 import { Platform } from "react-native";
+import { RankTier } from "@/types";
+import { getRankForPoints, getRankFactor, getXpPerMinute } from "./ranks";
 
 // ---------- dynamic import ----------
 type HKModule = typeof import("@kingstinct/react-native-healthkit");
@@ -19,11 +21,10 @@ if (Platform.OS === "ios") {
 }
 
 // ---------- discipline mapping ----------
-// WorkoutActivityType enum values from @kingstinct/react-native-healthkit
-const SWIM_ACTIVITIES = new Set([46 /* swimming */, 53 /* waterFitness */]);
-const BIKE_ACTIVITIES = new Set([13 /* cycling */, 74 /* handCycling */]);
-const RUN_ACTIVITIES = new Set([37 /* running */, 52 /* walking */, 24 /* hiking */]);
-const TRI_ACTIVITY = 82; // swimBikeRun
+const SWIM_ACTIVITIES = new Set([46, 53]);
+const BIKE_ACTIVITIES = new Set([13, 74]);
+const RUN_ACTIVITIES = new Set([37, 52, 24]);
+const TRI_ACTIVITY = 82;
 
 export type Discipline = "swim" | "bike" | "run";
 
@@ -31,15 +32,14 @@ export interface HealthWorkoutData {
   id: string;
   discipline: Discipline | null;
   activityType: number;
-  startDate: string; // ISO
+  startDate: string;
   endDate: string;
-  duration: number; // seconds
-  distance: number; // meters
+  duration: number;
+  distance: number;
   calories: number;
   sourceName: string;
 }
 
-// ---------- availability ----------
 export function isHealthKitAvailable(): boolean {
   if (Platform.OS !== "ios" || !HK) return false;
   try {
@@ -49,7 +49,6 @@ export function isHealthKitAvailable(): boolean {
   }
 }
 
-// ---------- permissions ----------
 export async function requestHealthKitPermissions(): Promise<boolean> {
   if (!HK) return false;
   try {
@@ -62,16 +61,14 @@ export async function requestHealthKitPermissions(): Promise<boolean> {
   }
 }
 
-// ---------- map activity → discipline ----------
 function toDiscipline(activityType: number): Discipline | null {
   if (SWIM_ACTIVITIES.has(activityType)) return "swim";
   if (BIKE_ACTIVITIES.has(activityType)) return "bike";
   if (RUN_ACTIVITIES.has(activityType)) return "run";
-  if (activityType === TRI_ACTIVITY) return "run"; // triathlon → count as run
+  if (activityType === TRI_ACTIVITY) return "run";
   return null;
 }
 
-// ---------- fetch workouts ----------
 export async function fetchWorkouts(
   fromDate: Date,
   toDate: Date = new Date()
@@ -116,36 +113,49 @@ export async function fetchWorkouts(
   }
 }
 
-export async function fetchRecentWorkouts(
-  days: number = 7
-): Promise<HealthWorkoutData[]> {
+export async function fetchRecentWorkouts(days: number = 7): Promise<HealthWorkoutData[]> {
   const from = new Date();
   from.setDate(from.getDate() - days);
   return fetchWorkouts(from);
 }
 
-// ---------- point calculation ----------
-export function calculatePoints(workout: HealthWorkoutData): {
+export interface CalculatePointsResult {
   points: number;
   distanceBonus: number;
   paceBonus: number;
-} {
+  tier: RankTier;
+  rankFactor: number;
+  baseBeforeCompliance: number;
+}
+
+/**
+ * XP for a synced workout. Uses tri-rank overall points **before** this workout for tier.
+ */
+export function calculatePoints(
+  workout: HealthWorkoutData,
+  overallPointsBeforeWorkout: number
+): CalculatePointsResult {
+  const tier = getRankForPoints(overallPointsBeforeWorkout).tier;
+  const xpPerMin = getXpPerMinute(tier);
+  const rankFactor = getRankFactor(tier);
+
   const durationMin = workout.duration / 60;
   const distanceKm = workout.distance / 1000;
 
-  // Base: 3 pts / min
-  let points = Math.floor(durationMin * 3);
+  let points = Math.floor(durationMin * xpPerMin);
 
-  // Distance bonus (swimming is weighted higher)
   let distanceBonus = 0;
-  if (workout.discipline === "swim") distanceBonus = Math.floor(distanceKm * 20);
-  else if (workout.discipline === "bike") distanceBonus = Math.floor(distanceKm * 2);
-  else if (workout.discipline === "run") distanceBonus = Math.floor(distanceKm * 5);
+  if (workout.discipline === "swim") {
+    distanceBonus = Math.floor(distanceKm * 20 * rankFactor);
+  } else if (workout.discipline === "bike") {
+    distanceBonus = Math.floor(distanceKm * 2 * rankFactor);
+  } else if (workout.discipline === "run") {
+    distanceBonus = Math.floor(distanceKm * 5 * rankFactor);
+  }
 
-  // Pace bonus
   let paceBonus = 0;
   if (distanceKm > 0 && durationMin > 0) {
-    const pace = durationMin / distanceKm; // min/km
+    const pace = durationMin / distanceKm;
     if (workout.discipline === "run" && pace < 5.5) paceBonus = 20;
     else if (workout.discipline === "run" && pace < 6.5) paceBonus = 10;
     else if (workout.discipline === "bike" && pace < 2.5) paceBonus = 20;
@@ -154,11 +164,17 @@ export function calculatePoints(workout: HealthWorkoutData): {
     else if (workout.discipline === "swim" && pace < 30) paceBonus = 10;
   }
 
-  // Long-session bonus
   if (durationMin >= 90) points += 30;
   else if (durationMin >= 60) points += 15;
 
   points += distanceBonus + paceBonus;
 
-  return { points, distanceBonus, paceBonus };
+  return {
+    points,
+    distanceBonus,
+    paceBonus,
+    tier,
+    rankFactor,
+    baseBeforeCompliance: points,
+  };
 }
