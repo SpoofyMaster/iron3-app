@@ -22,15 +22,21 @@ const ICONS: Record<Discipline, keyof typeof Ionicons.glyphMap> = {
 interface RecentActivitiesProps {
   activities: Activity[];
   title?: string;
+  /** When true, omit the card title (e.g. when using SectionHeader above). */
+  hideTitle?: boolean;
 }
 
-export function RecentActivities({ activities, title = "Off-plan (watch)" }: RecentActivitiesProps) {
+export function RecentActivities({
+  activities,
+  title = "Off-plan (watch)",
+  hideTitle = false,
+}: RecentActivitiesProps) {
   const router = useRouter();
 
   if (activities.length === 0) {
     return (
       <GlassCard style={styles.card}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        {!hideTitle && <Text style={styles.sectionTitle}>{title}</Text>}
         <Text style={styles.empty}>
           No off-plan watch workouts this week. Synced sessions that match your PREP plan appear above.
         </Text>
@@ -40,7 +46,7 @@ export function RecentActivities({ activities, title = "Off-plan (watch)" }: Rec
 
   return (
     <GlassCard style={styles.card}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      {!hideTitle && <Text style={styles.sectionTitle}>{title}</Text>}
       <Text style={styles.sub}>
         Watch-synced workouts that did not match a planned PREP session (base XP only).
       </Text>

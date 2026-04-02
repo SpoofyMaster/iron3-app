@@ -17,3 +17,6 @@ export { PremiumLock } from "./PremiumLock";
 export { GradientBackground } from "./GradientBackground";
 export { LevelStreakBar } from "./LevelStreakBar";
 export { IronmanEventCard } from "./IronmanEventCard";
+export { PrepSessionStatus } from "./PrepSessionStatus";
+export { RecentActivities } from "./RecentActivities";
+export { HomePrepPlanWeek } from "./HomePrepPlanWeek";
