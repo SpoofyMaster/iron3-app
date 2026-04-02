@@ -304,6 +304,9 @@ function buildActivityFromRow(row: any): Activity {
     paceBonus: Number(row.pace_bonus ?? 0),
     title: String(row.title ?? `${row.discipline} workout`),
     createdAt: normalizeIsoDate(row.created_at) ?? new Date().toISOString(),
+    source: row.source ?? undefined,
+    prepVerified: row.prep_verified ?? false,
+    complianceBonus: Number(row.compliance_bonus ?? 0),
   };
 }
 
@@ -896,12 +899,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   logWorkout: async (workout) => {
     workoutCounter++;
     const id = `wl-${Date.now()}-${workoutCounter}`;
-    const durationMin = workout.duration / 60;
-    let points = Math.floor(durationMin * 3);
-    if (workout.effort >= 7) points += 20;
-    if (workout.effort >= 9) points += 30;
-    if (durationMin >= 60) points += 15;
-    if (durationMin >= 90) points += 30;
+    const points = 0;
 
     const newLog: WorkoutLog = {
       ...workout,
@@ -916,9 +914,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     let newSwim = state.swimPoints;
     let newBike = state.bikePoints;
     let newRun = state.runPoints;
-    if (workout.discipline === "swim") newSwim += points;
-    else if (workout.discipline === "bike") newBike += points;
-    else if (workout.discipline === "run") newRun += points;
+    if (workout.discipline === "swim") newSwim += 0;
+    else if (workout.discipline === "bike") newBike += 0;
+    else if (workout.discipline === "run") newRun += 0;
 
     const todayStr = new Date().toISOString().split("T")[0];
     const activityForWorkout: Activity | null =
@@ -936,11 +934,14 @@ export const useAppStore = create<AppState>((set, get) => ({
                   ? workout.duration / (workout.distance / 100)
                   : workout.duration / workout.distance
                 : 0,
-            pointsEarned: points,
+            pointsEarned: 0,
             distanceBonus: 0,
             paceBonus: 0,
             title: `${workout.discipline.toUpperCase()} ${workout.workoutType.replace(/_/g, " ")}`,
             createdAt: new Date().toISOString(),
+            source: "manual",
+            prepVerified: false,
+            complianceBonus: 0,
           }
         : null;
 
@@ -988,7 +989,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       personalBests: derived.personalBests,
       performanceStats,
       showWorkoutConfirmation: true,
-      lastLoggedPoints: points,
+      lastLoggedPoints: 0,
     });
 
     if (state.currentUserId) {
@@ -1002,7 +1003,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           effort: workout.effort,
           indoor_outdoor: workout.indoorOutdoor,
           notes: workout.notes,
-          points_earned: points,
+          points_earned: 0,
           date: workout.date,
         });
 
@@ -1021,11 +1022,13 @@ export const useAppStore = create<AppState>((set, get) => ({
             distance: activityForWorkout.distance > 0 ? activityForWorkout.distance : 0.01,
             duration: Math.max(1, Math.round(activityForWorkout.duration)),
             pace: Math.round(activityForWorkout.pace * 100) / 100,
-            points_earned: points,
+            points_earned: 0,
             distance_bonus: 0,
             pace_bonus: 0,
             date: workout.date,
             source: "manual",
+            prep_verified: false,
+            compliance_bonus: 0,
           });
           const savedActivityId = String(savedActivity.id);
           set((prev) => ({

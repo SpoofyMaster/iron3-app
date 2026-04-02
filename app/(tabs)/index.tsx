@@ -16,13 +16,15 @@ import {
   TriRankDisplay,
   DisciplineCard,
   SectionHeader,
-  ActivityRow,
   StatCard,
   GlassCard,
   PremiumBanner,
   GradientBackground,
   LevelStreakBar,
+  HomePrepPlanWeek,
+  RecentActivities,
 } from "@/components";
+import { filterOffPlanWatchActivities } from "@/lib/prepSessionUi";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatDistance } from "@/lib/scoring";
 import { getTriRank } from "@/lib/ranks";
@@ -72,9 +74,6 @@ export default function HomeScreen() {
   const milestones = useAppStore((s) => s.milestones);
   const trainingPlan = useAppStore((s) => s.trainingPlan);
   const prepPlan = useAppStore((s) => s.prepPlan);
-  const markPrepSessionComplete = useAppStore((s) => s.markPrepSessionComplete);
-
-  const recentActivities = useMemo(() => activities.slice(0, 5), [activities]);
 
   const daysToRace = useMemo(() => {
     if (!selectedRaceEvent?.date) return null;
@@ -259,6 +258,7 @@ export default function HomeScreen() {
           </GlassCard>
 
           <TriRankDisplay triRank={triRank} />
+          <Text style={styles.watchHint}>Connect your watch to earn XP.</Text>
         </GradientBackground>
 
         {/* XP Decay Warning */}
@@ -374,46 +374,7 @@ export default function HomeScreen() {
         {/* Weekly Plan */}
         <GlassCard style={{ marginHorizontal: spacing.lg }}>
           {prepPlan && prepPlan.weeks.length > 0 ? (
-            (prepPlan.weeks[prepPlan.currentWeekIndex]?.sessions ?? []).map((session, idx, arr) => {
-              const sColor = DISCIPLINE_COLORS[session.discipline] ?? colors.textMuted;
-              const dayWeekday = PREP_DAY_TO_WEEKDAY[session.day];
-              const isToday = dayWeekday === todayIdx;
-              const isRest = session.discipline === "rest";
-              return (
-                <View key={session.id}>
-                  <View style={[styles.planRow, isToday && styles.planRowToday]}>
-                    <Text style={[styles.planDay, isToday && { color: colors.glowCyan }]}>{session.day.toUpperCase()}</Text>
-                    <View style={[styles.planIcon, { backgroundColor: sColor + "15" }]}>
-                      <Ionicons
-                        name={DISCIPLINE_ICONS[session.discipline] ?? "fitness"}
-                        size={14}
-                        color={sColor}
-                      />
-                    </View>
-                    <View style={styles.planInfo}>
-                      <Text style={styles.planTitle} numberOfLines={1}>{session.notes}</Text>
-                      {!isRest && (
-                        <Text style={styles.planStats}>{session.durationMin} min</Text>
-                      )}
-                    </View>
-                    {isRest ? null : session.completed ? (
-                      <TouchableOpacity
-                        onPress={() => markPrepSessionComplete(prepPlan.currentWeekIndex, session.id)}
-                        style={styles.checkCircle}
-                      >
-                        <Ionicons name="checkmark" size={14} color={colors.success} />
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => markPrepSessionComplete(prepPlan.currentWeekIndex, session.id)}
-                        style={styles.emptyCircle}
-                      />
-                    )}
-                  </View>
-                  {idx < arr.length - 1 && <View style={styles.divider} />}
-                </View>
-              );
-            })
+            <HomePrepPlanWeek todayIdx={todayIdx} />
           ) : (
             trainingPlan.weeklyPlan.map((workout, idx) => {
               const wColor = DISCIPLINE_COLORS[workout.discipline] ?? colors.textMuted;
@@ -654,22 +615,11 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <SectionHeader title="Recent Activities" />
-        <GlassCard>
-          {recentActivities.map((activity, idx) => (
-            <View key={activity.id}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.push({ pathname: "/workout/[id]", params: { id: activity.id } })}
-              >
-                <ActivityRow activity={activity} />
-              </TouchableOpacity>
-              {idx < recentActivities.length - 1 && (
-                <View style={styles.divider} />
-              )}
-            </View>
-          ))}
-        </GlassCard>
+        <SectionHeader title="Off-plan (watch)" />
+        <RecentActivities
+          activities={filterOffPlanWatchActivities(activities)}
+          hideTitle
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -834,6 +784,13 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
     lineHeight: 20,
+  },
+  watchHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: "center",
+    marginTop: -4,
+    paddingHorizontal: spacing.md,
   },
   ringsSection: {
     paddingHorizontal: spacing.lg,

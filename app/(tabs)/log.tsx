@@ -543,7 +543,9 @@ export default function LogScreen() {
               <Text style={styles.confirmPoints}>+{lastPoints}</Text>
               <Text style={styles.confirmPtsLabel}>XP earned</Text>
             </View>
-            <Text style={styles.confirmSub}>Keep up the momentum!</Text>
+            <Text style={styles.confirmSub}>
+              Manual logs earn 0 XP. Connect Apple Watch (Health) to sync workouts and earn XP.
+            </Text>
           </Animated.View>
         </Animated.View>
       )}
