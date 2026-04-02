@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { PrepRowUiStatus } from "@/lib/prepSessionUi";
-import { colors, fontSize, fontWeight } from "@/theme";
+import { colors } from "@/theme";
 
 interface PrepSessionStatusProps {
   status: PrepRowUiStatus;
@@ -9,38 +10,58 @@ interface PrepSessionStatusProps {
 }
 
 export function PrepSessionStatus({ status, compact }: PrepSessionStatusProps) {
-  const emojiSize = compact ? 16 : 18;
+  const size = compact ? 20 : 24;
+  const iconSize = compact ? 12 : 14;
+  const circleStyle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+  };
 
+  // Rest day — no circle
   if (status === "rest") {
+    return null;
+  }
+
+  // Verified (exact or partial match) — green check circle (same as old ✅)
+  if (status === "verified" || status === "partial") {
     return (
-      <View style={styles.row}>
-        <Text style={[styles.emoji, { fontSize: emojiSize }]}>⏭️</Text>
-        {!compact && <Text style={styles.hint}>Skip</Text>}
+      <View style={[styles.checkCircle, circleStyle]}>
+        <Ionicons name="checkmark" size={iconSize} color={colors.success} />
       </View>
     );
   }
-  if (status === "verified") {
-    return <Text style={[styles.emoji, { fontSize: emojiSize }]}>✅</Text>;
-  }
-  if (status === "partial") {
-    return <Text style={[styles.emoji, { fontSize: emojiSize }]}>✅</Text>;
-  }
+
+  // Mismatch — orange circle with sync icon
   if (status === "mismatch") {
-    return <Text style={[styles.emoji, { fontSize: emojiSize }]}>🔄</Text>;
+    return (
+      <View style={[styles.mismatchCircle, circleStyle]}>
+        <Ionicons name="sync" size={iconSize} color="#F59E0B" />
+      </View>
+    );
   }
-  return <Text style={[styles.empty, { fontSize: emojiSize }]}>⬜</Text>;
+
+  // Empty / not done — hollow gray circle (same as old empty circle)
+  return <View style={[styles.emptyCircle, circleStyle]} />;
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 4 },
-  emoji: { fontSize: 18 },
-  empty: {
-    fontSize: 18,
-    color: colors.textMuted,
+  checkCircle: {
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  hint: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    fontWeight: fontWeight.medium,
+  mismatchCircle: {
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyCircle: {
+    borderWidth: 1.5,
+    borderColor: colors.surfaceGlassBorder,
   },
 });
