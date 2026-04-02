@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -24,7 +24,13 @@ import {
   HomePrepPlanWeek,
   RecentActivities,
 } from "@/components";
-import { filterOffPlanWatchActivities } from "@/lib/prepSessionUi";
+import {
+  computePrepPlanDisciplineProgress,
+  filterOffPlanWatchActivities,
+  isPrepWatchMatch,
+  verificationForSessionDay,
+} from "@/lib/prepSessionUi";
+import { listPrepSessionVerifications } from "@/lib/prepVerifications";
 import { colors, fontSize, fontWeight, spacing, borderRadius } from "@/theme";
 import { formatDistance } from "@/lib/scoring";
 import { getTriRank } from "@/lib/ranks";
@@ -74,6 +80,29 @@ export default function HomeScreen() {
   const milestones = useAppStore((s) => s.milestones);
   const trainingPlan = useAppStore((s) => s.trainingPlan);
   const prepPlan = useAppStore((s) => s.prepPlan);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+
+  const prepWeek = prepPlan && prepPlan.weeks.length > 0 ? prepPlan.weeks[prepPlan.currentWeekIndex] : undefined;
+  const prepWeekNumber = prepWeek?.weekNumber ?? 0;
+
+  const [prepVerifications, setPrepVerifications] = useState<
+    Awaited<ReturnType<typeof listPrepSessionVerifications>>
+  >([]);
+
+  useEffect(() => {
+    if (!currentUserId || !prepWeekNumber) {
+      setPrepVerifications([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const rows = await listPrepSessionVerifications(currentUserId, prepWeekNumber);
+      if (!cancelled) setPrepVerifications(rows);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, prepWeekNumber, activities.length]);
 
   const daysToRace = useMemo(() => {
     if (!selectedRaceEvent?.date) return null;
@@ -148,19 +177,11 @@ export default function HomeScreen() {
     [prepPlan, trainingPlan, todayName, todayPrepDay]
   );
 
-  // Training plan progress rings data
+  // Training plan progress rings data (PREP: includes Apple Watch verification rows + actual durations)
   const planProgress = useMemo(() => {
     if (prepPlan && prepPlan.weeks.length > 0) {
       const sessions = prepPlan.weeks[prepPlan.currentWeekIndex]?.sessions ?? [];
-      const swimPlanned = sessions.filter((s) => s.discipline === "swim").reduce((sum, s) => sum + s.durationMin, 0);
-      const swimDone = sessions.filter((s) => s.discipline === "swim" && s.completed).reduce((sum, s) => sum + s.durationMin, 0);
-      const bikePlanned = sessions.filter((s) => s.discipline === "bike").reduce((sum, s) => sum + s.durationMin, 0);
-      const bikeDone = sessions.filter((s) => s.discipline === "bike" && s.completed).reduce((sum, s) => sum + s.durationMin, 0);
-      const runPlanned = sessions.filter((s) => s.discipline === "run").reduce((sum, s) => sum + s.durationMin, 0);
-      const runDone = sessions.filter((s) => s.discipline === "run" && s.completed).reduce((sum, s) => sum + s.durationMin, 0);
-      const totalPlanned = swimPlanned + bikePlanned + runPlanned;
-      const totalDone = swimDone + bikeDone + runDone;
-      return { swimPlanned, swimDone, bikePlanned, bikeDone, runPlanned, runDone, totalPlanned, totalDone };
+      return computePrepPlanDisciplineProgress(sessions, prepVerifications, activities);
     }
     const plan = trainingPlan.weeklyPlan;
     const swimPlanned = plan.filter((w) => w.discipline === "swim").reduce((sum, w) => sum + w.duration, 0);
@@ -172,7 +193,7 @@ export default function HomeScreen() {
     const totalPlanned = swimPlanned + bikePlanned + runPlanned;
     const totalDone = swimDone + bikeDone + runDone;
     return { swimPlanned, swimDone, bikePlanned, bikeDone, runPlanned, runDone, totalPlanned, totalDone };
-  }, [prepPlan, trainingPlan]);
+  }, [prepPlan, trainingPlan, prepVerifications, activities]);
 
   const formatMinToHrMin = (min: number) => {
     const h = Math.floor(min / 60);
@@ -425,6 +446,7 @@ export default function HomeScreen() {
 
           const prepSessionMap = new Map<number, { discipline: string; completed: boolean }>();
           if (prepPlan && prepPlan.weeks.length > 0) {
+            const calendarWeekNum = prepPlan.weeks[prepPlan.currentWeekIndex]?.weekNumber;
             for (const week of prepPlan.weeks) {
               const mondayDate = new Date(week.weekOf);
               for (const session of week.sessions) {
@@ -433,9 +455,15 @@ export default function HomeScreen() {
                 const sessionDate = new Date(mondayDate);
                 sessionDate.setDate(mondayDate.getDate() + offsetDays);
                 if (sessionDate.getMonth() === currentMonth && sessionDate.getFullYear() === currentYear) {
+                  const v =
+                    calendarWeekNum !== undefined && week.weekNumber === calendarWeekNum
+                      ? verificationForSessionDay(prepVerifications, session.day)
+                      : undefined;
+                  const completed =
+                    session.completed || (!!v && isPrepWatchMatch(v.matchType));
                   prepSessionMap.set(sessionDate.getDate(), {
                     discipline: session.discipline,
-                    completed: session.completed,
+                    completed,
                   });
                 }
               }
