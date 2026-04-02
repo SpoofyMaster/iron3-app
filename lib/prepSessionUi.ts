@@ -1,4 +1,4 @@
-import type { Activity, PrepPlanWeek, PrepSession } from "@/types";
+import type { Activity, PrepMatchType, PrepPlanWeek, PrepSession } from "@/types";
 import type { PrepSessionVerificationRow } from "@/types";
 
 export type PrepRowUiStatus = "rest" | "empty" | "verified" | "partial" | "mismatch";
@@ -52,6 +52,101 @@ function disciplineMatches(
   return d === sessionDiscipline;
 }
 
+/** Watch verification rows that count as a completed PREP session for UI + progress rings. */
+export function isPrepWatchMatch(matchType: PrepMatchType): boolean {
+  return matchType === "exact_match" || matchType === "partial_match";
+}
+
+export function verificationForSessionDay(
+  verifications: PrepSessionVerificationRow[],
+  sessionDay: PrepSession["day"]
+): PrepSessionVerificationRow | undefined {
+  return verifications.find((x) => x.sessionDay === sessionDay);
+}
+
+/** Minutes to credit toward weekly discipline rings (watch actuals when available). */
+export function minutesForPrepSessionProgress(
+  session: PrepSession,
+  v: PrepSessionVerificationRow | undefined,
+  activities: Activity[]
+): number {
+  if (session.discipline === "rest") return 0;
+
+  const watchOk = v && isPrepWatchMatch(v.matchType);
+  const manualDone = session.completed;
+
+  if (!watchOk && !manualDone) return 0;
+
+  if (watchOk && v) {
+    if (v.actualActivityId) {
+      const act = activities.find((a) => a.id === v.actualActivityId);
+      if (act && act.duration > 0) {
+        return Math.max(1, Math.round(act.duration / 60));
+      }
+    }
+  }
+
+  return session.durationMin;
+}
+
+export type PrepDisciplineProgress = {
+  swimPlanned: number;
+  swimDone: number;
+  bikePlanned: number;
+  bikeDone: number;
+  runPlanned: number;
+  runDone: number;
+  totalPlanned: number;
+  totalDone: number;
+};
+
+/** Weekly ring totals for PREP plan (swim / bike / run only; brick excluded like legacy UI). */
+export function computePrepPlanDisciplineProgress(
+  sessions: PrepSession[],
+  verifications: PrepSessionVerificationRow[],
+  activities: Activity[]
+): PrepDisciplineProgress {
+  let swimPlanned = 0;
+  let swimDone = 0;
+  let bikePlanned = 0;
+  let bikeDone = 0;
+  let runPlanned = 0;
+  let runDone = 0;
+
+  for (const s of sessions) {
+    if (s.discipline === "rest") continue;
+    if (s.discipline !== "swim" && s.discipline !== "bike" && s.discipline !== "run") continue;
+
+    const v = verificationForSessionDay(verifications, s.day);
+    const planned = s.durationMin;
+    const doneMin = minutesForPrepSessionProgress(s, v, activities);
+
+    if (s.discipline === "swim") {
+      swimPlanned += planned;
+      swimDone += doneMin;
+    } else if (s.discipline === "bike") {
+      bikePlanned += planned;
+      bikeDone += doneMin;
+    } else {
+      runPlanned += planned;
+      runDone += doneMin;
+    }
+  }
+
+  const totalPlanned = swimPlanned + bikePlanned + runPlanned;
+  const totalDone = swimDone + bikeDone + runDone;
+  return {
+    swimPlanned,
+    swimDone,
+    bikePlanned,
+    bikeDone,
+    runPlanned,
+    runDone,
+    totalPlanned,
+    totalDone,
+  };
+}
+
 export function computePrepRowStatus(
   session: PrepSession,
   week: PrepPlanWeek,
@@ -60,8 +155,8 @@ export function computePrepRowStatus(
 ): PrepRowUiStatus {
   if (session.discipline === "rest") return "rest";
 
-  const v = verifications.find((x) => x.sessionDay === session.day);
-  if (v) {
+  const v = verificationForSessionDay(verifications, session.day);
+  if (v && isPrepWatchMatch(v.matchType)) {
     return v.matchType === "exact_match" ? "verified" : "partial";
   }
 
