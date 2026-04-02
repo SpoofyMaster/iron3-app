@@ -118,6 +118,8 @@ export async function createActivity(activity: {
   pace_bonus?: number;
   source?: string;
   external_id?: string;
+  prep_verified?: boolean;
+  compliance_bonus?: number;
 }) {
   const { data, error } = await supabase
     .from("activities")
