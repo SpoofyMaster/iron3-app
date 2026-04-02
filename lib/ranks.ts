@@ -1,14 +1,46 @@
 import { RankTier, RankThreshold, DisciplineRank, TriRank, Discipline } from "@/types";
 import { colors } from "@/theme";
 
+/** New progression thresholds (XP overhaul) */
 export const RANK_THRESHOLDS: RankThreshold[] = [
-  { tier: "Iron", min: 0, max: 999, color: colors.rank.Iron },
-  { tier: "Bronze", min: 1000, max: 2499, color: colors.rank.Bronze },
-  { tier: "Silver", min: 2500, max: 4999, color: colors.rank.Silver },
-  { tier: "Gold", min: 5000, max: 9999, color: colors.rank.Gold },
-  { tier: "Platinum", min: 10000, max: 14999, color: colors.rank.Platinum },
-  { tier: "Diamond", min: 15000, max: Infinity, color: colors.rank.Diamond },
+  { tier: "Iron", min: 0, max: 2999, color: colors.rank.Iron },
+  { tier: "Bronze", min: 3000, max: 9999, color: colors.rank.Bronze },
+  { tier: "Silver", min: 10000, max: 24999, color: colors.rank.Silver },
+  { tier: "Gold", min: 25000, max: 49999, color: colors.rank.Gold },
+  { tier: "Platinum", min: 50000, max: 99999, color: colors.rank.Platinum },
+  { tier: "Diamond", min: 100000, max: 199999, color: colors.rank.Diamond },
+  { tier: "Legendary", min: 200000, max: Infinity, color: colors.rank.Legendary },
 ];
+
+/** Multiplier applied to distance-based XP (swim/bike/run bonuses) by tier */
+export const RANK_FACTOR: Record<RankTier, number> = {
+  Iron: 1.0,
+  Bronze: 0.85,
+  Silver: 0.7,
+  Gold: 0.55,
+  Platinum: 0.4,
+  Diamond: 0.3,
+  Legendary: 0.2,
+};
+
+/** Base XP per minute of activity by tier */
+export const XP_PER_MINUTE: Record<RankTier, number> = {
+  Iron: 3.0,
+  Bronze: 2.5,
+  Silver: 2.0,
+  Gold: 1.5,
+  Platinum: 1.0,
+  Diamond: 0.75,
+  Legendary: 0.5,
+};
+
+export function getRankFactor(tier: RankTier): number {
+  return RANK_FACTOR[tier] ?? 1;
+}
+
+export function getXpPerMinute(tier: RankTier): number {
+  return XP_PER_MINUTE[tier] ?? 3;
+}
 
 export function getRankForPoints(points: number): {
   tier: RankTier;
@@ -23,7 +55,7 @@ export function getRankForPoints(points: number): {
     const threshold = RANK_THRESHOLDS[i];
     if (clamped >= threshold.min && clamped <= threshold.max) {
       const isTopTier = threshold.max === Infinity;
-      const range = isTopTier ? 10000 : threshold.max - threshold.min + 1;
+      const range = isTopTier ? 50000 : threshold.max - threshold.min + 1;
       const progress = isTopTier
         ? Math.min((clamped - threshold.min) / range, 1)
         : (clamped - threshold.min) / range;
@@ -44,8 +76,8 @@ export function getRankForPoints(points: number): {
     tier: "Iron",
     color: colors.rank.Iron,
     progress: 0,
-    nextTierPoints: 1000,
-    pointsToNext: 1000,
+    nextTierPoints: 3000,
+    pointsToNext: 3000,
   };
 }
 
@@ -78,8 +110,8 @@ export function getTriRank(
 ): TriRank {
   const overallPoints = Math.floor(
     swimPoints * DISCIPLINE_WEIGHTS.swim +
-    bikePoints * DISCIPLINE_WEIGHTS.bike +
-    runPoints * DISCIPLINE_WEIGHTS.run
+      bikePoints * DISCIPLINE_WEIGHTS.bike +
+      runPoints * DISCIPLINE_WEIGHTS.run
   );
 
   const overall = getRankForPoints(overallPoints);
@@ -108,6 +140,7 @@ const RANK_ORDER: RankTier[] = [
   "Gold",
   "Platinum",
   "Diamond",
+  "Legendary",
 ];
 
 export function getNextRankTier(tier: RankTier): RankTier | null {
@@ -138,9 +171,9 @@ export function calculateBonuses(
   trainedRun: boolean,
   sessionDurationMinutes: number
 ): BonusResult {
-  const consistencyBonus = sessionsThisWeek >= 3 ? 50 : 0;
-  const streakBonus = currentStreak * 20;
-  const balanceBonus = trainedSwim && trainedBike && trainedRun ? 100 : 0;
+  const consistencyBonus = sessionsThisWeek >= 3 ? 30 : 0;
+  const streakBonus = currentStreak * 15;
+  const balanceBonus = trainedSwim && trainedBike && trainedRun ? 80 : 0;
   let volumeBonus = 0;
   if (sessionDurationMinutes >= 120) volumeBonus = 50;
   else if (sessionDurationMinutes >= 90) volumeBonus = 30;

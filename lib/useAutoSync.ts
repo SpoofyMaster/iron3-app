@@ -3,17 +3,15 @@ import { AppState, Platform } from "react-native";
 import { useAppStore } from "@/store/useAppStore";
 import { syncHealthWorkouts } from "./healthSync";
 
-const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const MIN_INTERVAL_MS = 60 * 1000;
+const BACKGROUND_POLL_MS = 15 * 60 * 1000;
 
 /**
- * Hook that auto-syncs Apple Health workouts when:
- * 1. App comes to foreground
- * 2. User is authenticated
- * 3. Apple Health is connected
- * 4. Last sync was more than 15 min ago
+ * Auto-sync Apple Health: on open/foreground (throttled to 1/min) + every 15 min while active.
  */
 export function useAutoSync() {
   const lastSyncRef = useRef<number>(0);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentUserId = useAppStore((s) => s.currentUserId);
   const connectedDevices = useAppStore((s) => s.connectedDevices);
   const isAppleHealthConnected = connectedDevices.find(
@@ -23,17 +21,18 @@ export function useAutoSync() {
   useEffect(() => {
     if (Platform.OS !== "ios" || !currentUserId || !isAppleHealthConnected) return;
 
-    const doSync = async () => {
+    const doSync = async (force: boolean) => {
       const now = Date.now();
-      if (now - lastSyncRef.current < SYNC_INTERVAL_MS) return;
-      
+      if (!force && now - lastSyncRef.current < MIN_INTERVAL_MS) return;
+
       lastSyncRef.current = now;
       try {
-        const result = await syncHealthWorkouts(currentUserId, 7);
+        const store = useAppStore.getState();
+        const result = await syncHealthWorkouts(currentUserId, 7, {
+          prepPlan: store.prepPlan,
+        });
         if (result.synced > 0) {
           console.log(`Auto-sync: imported ${result.synced} new workouts`);
-          const store = useAppStore.getState();
-          // Re-hydrate persisted data so all derived stats stay in sync.
           await store.hydrateUserData(currentUserId);
         }
       } catch (e) {
@@ -41,16 +40,19 @@ export function useAutoSync() {
       }
     };
 
-    // Sync on mount
-    doSync();
+    void doSync(true);
 
-    // Sync when app comes back to foreground
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        doSync();
-      }
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void doSync(true);
     });
 
-    return () => subscription.remove();
+    pollRef.current = setInterval(() => {
+      if (AppState.currentState === "active") void doSync(false);
+    }, BACKGROUND_POLL_MS);
+
+    return () => {
+      sub.remove();
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [currentUserId, isAppleHealthConnected]);
 }

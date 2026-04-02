@@ -29,11 +29,12 @@ const tierSymbols: Record<RankTier, string> = {
   Gold: "Au",
   Platinum: "Pt",
   Diamond: "◇",
+  Legendary: "★",
 };
 
 function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: string; tier: RankTier }) {
   const gradientColors = getRankGradient(tier);
-  const isDiamond = tier === "Diamond";
+  const isDiamond = tier === "Diamond" || tier === "Legendary";
   const viewBox = "0 0 100 120";
 
   return (
@@ -49,7 +50,6 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
           <Stop offset="100%" stopColor={tierColor} stopOpacity="0" />
         </RadialGradient>
       </Defs>
-      {/* Shield body */}
       <Path
         d="M50 5 L85 20 L90 55 L50 115 L10 55 L15 20 Z"
         fill="url(#shieldGrad)"
@@ -57,7 +57,6 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
         strokeWidth={isDiamond ? 2.5 : 1.5}
         strokeOpacity={isDiamond ? 0.9 : 0.6}
       />
-      {/* Inner glow */}
       <Path
         d="M50 15 L78 27 L82 55 L50 105 L18 55 L22 27 Z"
         fill="url(#innerGlow)"
@@ -65,7 +64,6 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
         strokeWidth={0.5}
         strokeOpacity={0.3}
       />
-      {/* Wing accents - left */}
       <Path
         d="M15 20 L2 30 L5 45 L10 55"
         fill="none"
@@ -74,7 +72,6 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
         strokeOpacity={0.5}
         strokeLinecap="round"
       />
-      {/* Wing accents - right */}
       <Path
         d="M85 20 L98 30 L95 45 L90 55"
         fill="none"
@@ -84,16 +81,14 @@ function ShieldShape({ size, tierColor, tier }: { size: number; tierColor: strin
         strokeLinecap="round"
       />
       {isDiamond && (
-        <>
-          <Path
-            d="M50 5 L85 20 L90 55 L50 115 L10 55 L15 20 Z"
-            fill="none"
-            stroke={tierColor}
-            strokeWidth={1}
-            strokeOpacity={0.4}
-            strokeDasharray="3,3"
-          />
-        </>
+        <Path
+          d="M50 5 L85 20 L90 55 L50 115 L10 55 L15 20 Z"
+          fill="none"
+          stroke={tierColor}
+          strokeWidth={1}
+          strokeOpacity={0.4}
+          strokeDasharray="3,3"
+        />
       )}
     </Svg>
   );
@@ -108,7 +103,7 @@ export function RankBadge({
   points,
 }: RankBadgeProps) {
   const cfg = sizeConfig[size];
-  const isDiamond = tier === "Diamond";
+  const isDiamond = tier === "Diamond" || tier === "Legendary";
   const glowStyle = getGlowStyle(tierColor, isDiamond ? "lg" : "md");
 
   return (
@@ -149,9 +144,7 @@ export function RankBadge({
         </Text>
       )}
       {showPoints && points !== undefined && (
-        <Text style={styles.points}>
-          {points.toLocaleString()} XP
-        </Text>
+        <Text style={styles.points}>{points.toLocaleString()} XP</Text>
       )}
     </View>
   );
